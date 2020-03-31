@@ -2,6 +2,19 @@
 #Use update-alternatives to force Python 3.  For instructions, see: https://raspberry-valley.azurewebsites.net/Python-Default-Version/
 
 import tkinter
+import zmq
+import time
+
+def zmq_publish_setpoint_callback():
+	global setpntpub
+	global OxygenLevel
+	global TotalVolume
+	global RespiratoryRate
+	global InspiratoryRate
+	m = (OxygenLevel, TotalVolume, RespiratoryRate, InspiratoryRate)
+	setpntpub.send_pyobj(m)
+	print(f"Published {m}...")
+
 
 #This needs help!  These functions are being called by the button event and I did not know how to setup/handle a callback.  
 #The quick fix was to make a function  for each button. :(  
@@ -13,6 +26,7 @@ def increment_oxygen_level(value,upper,lower,step):
 			value = upper
 		OxygenLevel = value
 		sOxygenLevel.set(OxygenLevel)
+		zmq_publish_setpoint_callback()
 		return
 		
 def decrement_oxygen_level(value,upper,lower,step):
@@ -23,6 +37,7 @@ def decrement_oxygen_level(value,upper,lower,step):
 			value = lower
 		OxygenLevel = value
 		sOxygenLevel.set(OxygenLevel)
+		zmq_publish_setpoint_callback()
 		return
 
 def increment_total_volume(value,upper,lower,step):
@@ -33,6 +48,7 @@ def increment_total_volume(value,upper,lower,step):
 			value = upper
 		TotalVolume = value
 		sTotalVolume.set(TotalVolume)
+		zmq_publish_setpoint_callback()
 		return
 		
 def decrement_total_volume(value,upper,lower,step):
@@ -43,6 +59,7 @@ def decrement_total_volume(value,upper,lower,step):
 			value = lower
 		TotalVolume = value
 		sTotalVolume.set(TotalVolume)
+		zmq_publish_setpoint_callback()
 		return
 
 def increment_respiratory_rate(value,upper,lower,step):
@@ -53,6 +70,7 @@ def increment_respiratory_rate(value,upper,lower,step):
 			value = upper
 		RespiratoryRate = value
 		sRespiratoryRate.set(RespiratoryRate)
+		zmq_publish_setpoint_callback()
 		return
 		
 def decrement_respiratory_rate(value,upper,lower,step):
@@ -63,6 +81,7 @@ def decrement_respiratory_rate(value,upper,lower,step):
 			value = lower
 		RespiratoryRate = value
 		sRespiratoryRate.set(RespiratoryRate)
+		zmq_publish_setpoint_callback()
 		return
 		
 def increment_inspiratory_rate(value,upper,lower,step):
@@ -73,6 +92,7 @@ def increment_inspiratory_rate(value,upper,lower,step):
 			value = upper
 		InspiratoryRate = round(value,2)
 		sInspiratoryRate.set(InspiratoryRate)
+		zmq_publish_setpoint_callback()
 		return
 		
 def decrement_inspiratory_rate(value,upper,lower,step):
@@ -84,13 +104,27 @@ def decrement_inspiratory_rate(value,upper,lower,step):
 		round(value, 3)
 		InspiratoryRate = round(value,2)
 		sInspiratoryRate.set(InspiratoryRate)
+		zmq_publish_setpoint_callback()
 		return
+
+# Setup ZeroMQ
+print("Initializing ZeroMQ...")
+ZMQ_GUI_TOPIC = "ipc:///tmp/gui_setpoint.pipe"
+ctxt = zmq.Context()
+setpntpub = ctxt.socket(zmq.PUB)
+setpntpub.connect(ZMQ_GUI_TOPIC)
+time.sleep(0.2) # NOTE Solves "slow joiner"; better way is to set up local subscriber to check
+print("ZeroMQ finished init...")
 
 #Defaults.  Probably should persist these somehow. 
 OxygenLevel = 40
 TotalVolume = 600
 RespiratoryRate = 14
 InspiratoryRate = 1.0
+
+m = (OxygenLevel, TotalVolume, RespiratoryRate, InspiratoryRate)
+setpntpub.send_pyobj(m)
+print(f"Published {m}...")
 
 labelFont=('', 20, 'bold')
 frameFont=('', 14, 'bold')
@@ -168,7 +202,7 @@ lbl6.grid(row=0, column=2, rowspan=2, pady=1, padx=10)
 lbl6.config(font=labelFont)
 
 #Inspiratory Rate Frame
-InspiratoryRateFrame = tkinter.LabelFrame(MainFrame, text='Inspiratory Rate', width=400, height=240, font=frameFont, borderwidth=3, relief='groove')
+InspiratoryRateFrame = tkinter.LabelFrame(MainFrame, text='Inspiratory Period', width=400, height=240, font=frameFont, borderwidth=3, relief='groove')
 InspiratoryRateFrame.grid(row=1, column=1, padx=10, pady=10)
 
 btn7 = tkinter.Button(InspiratoryRateFrame, text="+", width=4, height=1, font=buttonFont, bg='SlateGray3', command=lambda: increment_inspiratory_rate(InspiratoryRate, 2, 0.1,0.1))
