@@ -118,7 +118,7 @@ print("ZeroMQ finished init...")
 
 #Defaults.  Probably should persist these somehow. 
 OxygenLevel = 40
-TotalVolume = 600
+TotalVolume = 500
 RespiratoryRate = 14
 InspiratoryRate = 1.0
 
@@ -222,9 +222,9 @@ lbl6.config(font=labelFont)
 InspiratoryRateFrame = tkinter.LabelFrame(MainFrame, text='Inspiratory Period', width=QuarterWidth, height=QuarterHeight, font=frameFont, borderwidth=int(TextWidth*0.3), relief='groove')
 InspiratoryRateFrame.grid(row=1, column=1, padx=PadX, pady=PadY)
 
-btn7 = tkinter.Button(InspiratoryRateFrame, text="+", width=ButtonWidth, height=ButtonHeight, font=buttonFont, bg='SlateGray3', command=lambda: increment_inspiratory_rate(InspiratoryRate, 2, 0.1,0.1))
+btn7 = tkinter.Button(InspiratoryRateFrame, text="+", width=ButtonWidth, height=ButtonHeight, font=buttonFont, bg='SlateGray3', command=lambda: increment_inspiratory_rate(InspiratoryRate, 2, 0.5,0.1))
 btn7.grid(row=0, column=0, pady=int(PadY/2), padx=PadX)
-btn8 = tkinter.Button(InspiratoryRateFrame, text="-", width=ButtonWidth, height=ButtonHeight, font=buttonFont, bg='SlateGray3', command=lambda: decrement_inspiratory_rate(InspiratoryRate, 2, 0.1,0.1))
+btn8 = tkinter.Button(InspiratoryRateFrame, text="-", width=ButtonWidth, height=ButtonHeight, font=buttonFont, bg='SlateGray3', command=lambda: decrement_inspiratory_rate(InspiratoryRate, 2, 0.5,0.1))
 btn8.grid(row=1, column=0, pady=PadY, padx=PadX)
 
 lbl7 = tkinter.Label(InspiratoryRateFrame, textvariable=sInspiratoryRate, width=int(TextWidth*0.7), height=int(TextHeight*0.57), bg='SlateGray3')
