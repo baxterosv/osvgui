@@ -100,21 +100,25 @@ class VentilatorGUI():
 
         self.root = root
         self.root.title('OSV')
-        self.root.geometry(str(FullWidth) + "x" + str(FullHeight))
+        self.root.attributes('-fullscreen', True)
+        self.root.bind('<Escape>', self.quit_osv_gui_callback)
 
         # A frame to hold other frames
         # Currently working on a resizable version of this...
-        self.MainFrame = tkinter.LabelFrame(
-            root, borderwidth=0, highlightthickness=0, width=FullWidth, height=FullHeight)
-        self.MainFrame.pack(anchor='center', fill='y',
-                            expand=False, side='top', pady=PadY)
-        self.MainFrame.grid_rowconfigure(0, weight=1)
+        self.MainFrame = tkinter.Frame(
+            root, borderwidth=0, highlightthickness=0)
+        self.MainFrame.pack(anchor='center', fill='both',
+                            expand=True, side='top')
+        self.MainFrame.grid_rowconfigure(0, weight=3)
+        self.MainFrame.grid_rowconfigure(1, weight=3)
+        self.MainFrame.grid_rowconfigure(2, weight=1)
         self.MainFrame.grid_columnconfigure(0, weight=1)
+        self.MainFrame.grid_columnconfigure(1, weight=1)
 
         # Oxygen Level Frame
-        self.OxygenLevelFrame = tkinter.LabelFrame(self.MainFrame, text='Oxygen Level', width=QuarterWidth,
-                                                   height=QuarterHeight, font=frameFont, borderwidth=BorderWidth, relief='groove')
-        self.OxygenLevelFrame.grid(row=0, column=0, padx=PadX, pady=PadY)
+        self.OxygenLevelFrame = tkinter.LabelFrame(
+            self.MainFrame, text='Oxygen Level', font=frameFont, borderwidth=BorderWidth, relief='groove')
+        self.OxygenLevelFrame.grid(row=0, column=0)
 
         self.btn1 = tkinter.Button(self.OxygenLevelFrame, state="disabled", text="+", width=ButtonWidth, height=ButtonHeight,
                                    font=buttonFont, bg='SlateGray3', command=self.increment_oxygen_level)
@@ -135,9 +139,9 @@ class VentilatorGUI():
         self.lbl2.config(font=labelFont)
 
         # Total Volume Frame
-        self.TotalVolumeFrame = tkinter.LabelFrame(self.MainFrame, text='Total Volume', width=QuarterWidth,
-                                                   height=QuarterHeight, font=frameFont, borderwidth=BorderWidth, relief='groove')
-        self.TotalVolumeFrame.grid(row=0, column=1, padx=PadX, pady=PadY)
+        self.TotalVolumeFrame = tkinter.LabelFrame(
+            self.MainFrame, text='Total Volume', font=frameFont, borderwidth=BorderWidth, relief='groove')
+        self.TotalVolumeFrame.grid(row=0, column=1)
 
         self.btn3 = tkinter.Button(self.TotalVolumeFrame, text="+", width=ButtonWidth, height=ButtonHeight, font=buttonFont,
                                    bg='SlateGray3', command=self.increment_total_volume)
@@ -158,9 +162,9 @@ class VentilatorGUI():
         self.lbl4.config(font=labelFont)
 
         # Respiratory Rate Frame
-        self.RespiratoryRateFrame = tkinter.LabelFrame(self.MainFrame, text='Respiratory Rate', width=QuarterWidth,
-                                                       height=QuarterHeight, font=frameFont, borderwidth=int(TextWidth*0.3), relief='groove')
-        self.RespiratoryRateFrame.grid(row=1, column=0, padx=PadX, pady=PadY)
+        self.RespiratoryRateFrame = tkinter.LabelFrame(
+            self.MainFrame, text='Respiratory Rate', font=frameFont, borderwidth=BorderWidth, relief='groove')
+        self.RespiratoryRateFrame.grid(row=1, column=0)
 
         self.btn5 = tkinter.Button(self.RespiratoryRateFrame, text="+", width=ButtonWidth, height=ButtonHeight, font=buttonFont,
                                    bg='SlateGray3', command=self.increment_respiratory_rate)
@@ -181,9 +185,9 @@ class VentilatorGUI():
         self.lbl6.config(font=labelFont)
 
         # Inspiratory Rate Frame
-        self.InspiratoryRateFrame = tkinter.LabelFrame(self.MainFrame, text='Inspiratory Period', width=QuarterWidth,
-                                                       height=QuarterHeight, font=frameFont, borderwidth=int(TextWidth*0.3), relief='groove')
-        self.InspiratoryRateFrame.grid(row=1, column=1, padx=PadX, pady=PadY)
+        self.InspiratoryRateFrame = tkinter.LabelFrame(
+            self.MainFrame, text='Inspiratory Period', font=frameFont, borderwidth=BorderWidth, relief='groove')
+        self.InspiratoryRateFrame.grid(row=1, column=1)
 
         self.btn7 = tkinter.Button(self.InspiratoryRateFrame, text="+", width=ButtonWidth, height=ButtonHeight, font=buttonFont,
                                    bg='SlateGray3', command=self.increment_inspiratory_period)
@@ -228,7 +232,8 @@ class VentilatorGUI():
                                            font=buttonFont, bg='Blue', command=self.apply_pressed)
         self.button_apply.grid(row=0, column=1, sticky='w')
 
-        self.root.after(self.ZMQ_POLLER_CHECK_PERIOD_MS, self.zmq_poll_heartbeat_callback)
+        self.root.after(self.ZMQ_POLLER_CHECK_PERIOD_MS,
+                        self.zmq_poll_heartbeat_callback)
 
     def zmq_publish_setpoint_callback(self):
         # self.setpntpub.send_pyobj(m)
@@ -239,8 +244,12 @@ class VentilatorGUI():
         socks = dict(self.poller.poll(self.ZMQ_POLL_TIMEOUT_MS))
         if self.volheartbeatsub in socks:
             self.lastvolheartbeat = self.volheartbeatsub.recv_pyobj()
-        self.root.after(self.ZMQ_POLLER_CHECK_PERIOD_MS, self.zmq_poll_heartbeat_callback)
-        
+        self.root.after(self.ZMQ_POLLER_CHECK_PERIOD_MS,
+                        self.zmq_poll_heartbeat_callback)
+
+    def quit_osv_gui_callback(self, event=None):
+        logging.info('Exiting OSV GUI...')
+        self.root.destroy()
     # This needs help!  These functions are being called by the button event and I did not know how to setup/handle a callback.
     # The quick fix was to make a function  for each button. :(
 
