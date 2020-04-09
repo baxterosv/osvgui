@@ -21,6 +21,9 @@ class VentilatorGUI():
     def __init__(self, root):
 
         self.ZMQ_GUI_TOPIC = "ipc:///tmp/gui_setpoint.pipe"
+        self.ZMQ_VOL_HEARTBEAT_TOPIC = "ipc:///tmp/vol_heartbeat.pipe"
+        self.ZMQ_POLL_TIMEOUT_MS = 10
+        self.ZMQ_POLLER_CHECK_PERIOD_MS = 1000
         self.DEFAULT_OXYGEN_LEVEL = 40
         self.DEFAULT_TOTAL_VOLUME = 500
         self.DEFAULT_RESPITORY_RATE = 14
@@ -71,6 +74,7 @@ class VentilatorGUI():
         self.totalvolume = self.DEFAULT_TOTAL_VOLUME
         self.respiratoryrate = self.DEFAULT_RESPITORY_RATE
         self.inspitoryperiod = self.DEFAULT_INSPITORY_PERIOD
+        self.lastvolheartbeat = None
 
         # Set the StringVars to default settings.
         self.sOxygenLevel.set(self.oxygenlevel)
@@ -82,6 +86,14 @@ class VentilatorGUI():
         ctxt = zmq.Context()
         self.setpntpub = ctxt.socket(zmq.PUB)
         self.setpntpub.connect(self.ZMQ_GUI_TOPIC)
+
+        self.volheartbeatsub = ctxt.socket(zmq.SUB)
+        self.volheartbeatsub.bind(self.ZMQ_VOL_HEARTBEAT_TOPIC)
+        self.volheartbeatsub.setsockopt_string(zmq.SUBSCRIBE, '')
+
+        self.poller = zmq.Poller()
+        self.poller.register(self.volheartbeatsub, zmq.POLLIN)
+
         # NOTE Solves "slow joiner"; better way is to set up local subscriber to check
         time.sleep(0.2)
         logging.info("ZeroMQ finished init...")
@@ -216,18 +228,25 @@ class VentilatorGUI():
                                            font=buttonFont, bg='Blue', command=self.apply_pressed)
         self.button_apply.grid(row=0, column=1, sticky='w')
 
+        self.root.after(self.ZMQ_POLLER_CHECK_PERIOD_MS, self.zmq_poll_heartbeat_callback)
+
     def zmq_publish_setpoint_callback(self):
         # self.setpntpub.send_pyobj(m)
-        #print(f"Published {m}...")
+        # print(f"Published {m}...")
         pass
 
+    def zmq_poll_heartbeat_callback(self):
+        socks = dict(self.poller.poll(self.ZMQ_POLL_TIMEOUT_MS))
+        if self.volheartbeatsub in socks:
+            self.lastvolheartbeat = self.volheartbeatsub.recv_pyobj()
+        self.root.after(self.ZMQ_POLLER_CHECK_PERIOD_MS, self.zmq_poll_heartbeat_callback)
+        
     # This needs help!  These functions are being called by the button event and I did not know how to setup/handle a callback.
     # The quick fix was to make a function  for each button. :(
 
     def increment_oxygen_level(self):
         value = self.oxygenlevel
         upper = self.MAX_OXYGEN_LEVEL
-        lower = self.MIN_OXYGEN_LEVEL
         step = self.STEP_OXYGEN_LEVEL
         if value < upper:
             value = value + step
@@ -237,7 +256,6 @@ class VentilatorGUI():
 
     def decrement_oxygen_level(self):
         value = self.oxygenlevel
-        upper = self.MAX_OXYGEN_LEVEL
         lower = self.MIN_OXYGEN_LEVEL
         step = self.STEP_OXYGEN_LEVEL
         if value > lower:
@@ -249,7 +267,6 @@ class VentilatorGUI():
     def increment_total_volume(self):
         value = self.totalvolume
         upper = self.MAX_TOTAL_VOLUME
-        lower = self.MIN_TOTAL_VOLUME
         step = self.STEP_TOTAL_VOLUME
         if value < upper:
             value = value + step
@@ -259,7 +276,6 @@ class VentilatorGUI():
 
     def decrement_total_volume(self):
         value = self.totalvolume
-        upper = self.MAX_TOTAL_VOLUME
         lower = self.MIN_TOTAL_VOLUME
         step = self.STEP_TOTAL_VOLUME
         if value > lower:
@@ -271,7 +287,6 @@ class VentilatorGUI():
     def increment_respiratory_rate(self):
         value = self.respiratoryrate
         upper = self.MAX_RESPITORY_RATE
-        lower = self.MIN_RESPITORY_RATE
         step = self.STEP_RESPITORY_RATE
         if value < upper:
             value = value + step
@@ -281,7 +296,6 @@ class VentilatorGUI():
 
     def decrement_respiratory_rate(self):
         value = self.respiratoryrate
-        upper = self.MAX_RESPITORY_RATE
         lower = self.MIN_RESPITORY_RATE
         step = self.STEP_RESPITORY_RATE
         if value > lower:
@@ -293,7 +307,6 @@ class VentilatorGUI():
     def increment_inspiratory_period(self):
         value = self.inspitoryperiod
         upper = self.MAX_INSPITORY_PERIOD
-        lower = self.MIN_INSPITORY_PERIOD
         step = self.STEP_INSPITORY_PERIOD
         if value < upper:
             value = value + step
@@ -303,7 +316,6 @@ class VentilatorGUI():
 
     def decrement_inspiratory_period(self):
         value = self.inspitoryperiod
-        upper = self.MAX_INSPITORY_PERIOD
         lower = self.MIN_INSPITORY_PERIOD
         step = self.STEP_INSPITORY_PERIOD
         if value > lower:
@@ -313,12 +325,13 @@ class VentilatorGUI():
             self.sInspiratoryRate.set(value)
 
     def start_stop_pressed(self):
+        logging.info(self.state)
         if self.state == State.PAUSED:
-            self.state == State.RUNNING
-            self.button_startstop.configure(bg='Green')
+            self.state = State.RUNNING
+            self.button_startstop.configure(bg='Red', text='Stop')
         elif self.state == State.RUNNING:
-            self.state == State.PAUSED
-            self.button_startstop.configure(bg='Red')
+            self.state = State.PAUSED
+            self.button_startstop.configure(bg='Green', text='Start')
 
     def apply_pressed(self):
         self.status.set("Stopped")
