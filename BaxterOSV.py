@@ -18,11 +18,9 @@ class State(Enum):
 
 class ValueControlFrame(tkinter.LabelFrame):
 
-    def __init__(self, master, title, unit, default, minimum, maximum, step, enabled):
-        font = ('', 20, 'bold')
-        titleFont = ('', 26, 'bold')
-        self.padx = 15
-        self.pady = 15
+    def __init__(self, master, title, unit, default, minimum, maximum, step, enabled, padx, pady, font, titleFont):
+        self.padx = padx
+        self.pady = pady
         tkinter.LabelFrame.__init__(self, master, text=title, font=titleFont)
 
         self.tracked_val = default
@@ -128,11 +126,11 @@ class VentilatorGUI():
         self.STEP_TOTAL_VOLUME = 10
         self.STEP_RESPITORY_RATE = 1
         self.STEP_INSPITORY_PERIOD = 0.1
-        self.PADX = 15
-        self.PADY = 15
+        self.PADX = 10
+        self.PADY = 10
 
-        font = ('', 20, 'bold')
-        titleFont = ('', 26, 'bold')
+        font = ('', 12, 'bold')
+        titleFont = ('', 18, 'bold')
 
         self.state = State.PAUSED
         self.oxygenlevel = self.DEFAULT_OXYGEN_LEVEL
@@ -180,22 +178,22 @@ class VentilatorGUI():
 
         # Frames to control values sent to daemon
         self.oxygenLevelFrame = ValueControlFrame(
-            self.MainFrame, "Oxygen Level", "%", self.DEFAULT_OXYGEN_LEVEL, self.MIN_OXYGEN_LEVEL, self.MAX_OXYGEN_LEVEL, self.STEP_OXYGEN_LEVEL, 'disabled')
+            self.MainFrame, "Oxygen Level", "%", self.DEFAULT_OXYGEN_LEVEL, self.MIN_OXYGEN_LEVEL, self.MAX_OXYGEN_LEVEL, self.STEP_OXYGEN_LEVEL, 'disabled', self.PADX, self.PADY, font, titleFont)
         self.oxygenLevelFrame.grid(
             row=0, column=0, padx=self.PADX, pady=self.PADY, sticky='nesw')
 
         self.totalVolumeFrame = ValueControlFrame(
-            self.MainFrame, "Total Volume", "ml", self.DEFAULT_TOTAL_VOLUME, self.MIN_TOTAL_VOLUME, self.MAX_TOTAL_VOLUME, self.STEP_TOTAL_VOLUME, 'normal')
+            self.MainFrame, "Total Volume", "ml", self.DEFAULT_TOTAL_VOLUME, self.MIN_TOTAL_VOLUME, self.MAX_TOTAL_VOLUME, self.STEP_TOTAL_VOLUME, 'normal', self.PADX, self.PADY, font, titleFont)
         self.totalVolumeFrame.grid(
             row=0, column=1, padx=self.PADX, pady=self.PADY, sticky='nesw')
 
         self.respiratoryRateFrame = ValueControlFrame(
-            self.MainFrame, "Respiratory Rate", "bmp", self.DEFAULT_RESPITORY_RATE, self.MIN_RESPITORY_RATE, self.MAX_RESPITORY_RATE, self.STEP_RESPITORY_RATE, 'normal')
+            self.MainFrame, "Respiratory Rate", "bmp", self.DEFAULT_RESPITORY_RATE, self.MIN_RESPITORY_RATE, self.MAX_RESPITORY_RATE, self.STEP_RESPITORY_RATE, 'normal', self.PADX, self.PADY, font, titleFont)
         self.respiratoryRateFrame.grid(
             row=1, column=0, padx=self.PADX, pady=self.PADY, sticky='nesw')
 
         self.inspiratoryPeriodFrame = ValueControlFrame(
-            self.MainFrame, "Inspiration Period", "s", self.DEFAULT_INSPITORY_PERIOD, self.MIN_INSPITORY_PERIOD, self.MAX_INSPITORY_PERIOD, self.STEP_INSPITORY_PERIOD, 'normal')
+            self.MainFrame, "Inspiration Period", "s", self.DEFAULT_INSPITORY_PERIOD, self.MIN_INSPITORY_PERIOD, self.MAX_INSPITORY_PERIOD, self.STEP_INSPITORY_PERIOD, 'normal', self.PADX, self.PADY, font, titleFont)
         self.inspiratoryPeriodFrame.grid(
             row=1, column=1, padx=self.PADX, pady=self.PADY, sticky='nesw')
 
