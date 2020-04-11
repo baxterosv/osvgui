@@ -195,7 +195,7 @@ class VentilatorGUI():
             row=1, column=0, padx=self.PADX, pady=self.PADY, sticky='nesw')
 
         self.inspiratoryPeriodFrame = ValueControlFrame(
-            self.MainFrame, "Inpiration Period", "s", self.DEFAULT_INSPITORY_PERIOD, self.MIN_INSPITORY_PERIOD, self.MAX_INSPITORY_PERIOD, self.STEP_INSPITORY_PERIOD, 'normal')
+            self.MainFrame, "Inspiration Period", "s", self.DEFAULT_INSPITORY_PERIOD, self.MIN_INSPITORY_PERIOD, self.MAX_INSPITORY_PERIOD, self.STEP_INSPITORY_PERIOD, 'normal')
         self.inspiratoryPeriodFrame.grid(
             row=1, column=1, padx=self.PADX, pady=self.PADY, sticky='nesw')
 
