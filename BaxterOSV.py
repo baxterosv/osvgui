@@ -111,6 +111,7 @@ class VentilatorGUI():
         self.ZMQ_VOL_HEARTBEAT_TOPIC = "ipc:///tmp/vol_heartbeat.pipe"
         self.ZMQ_POLL_TIMEOUT_MS = 10
         self.ZMQ_POLLER_CHECK_PERIOD_MS = 1000
+        self.ZMQ_HEARTBEAT_INTERVAL_MS = 1000
         self.DEFAULT_OXYGEN_LEVEL = 40
         self.DEFAULT_TOTAL_VOLUME = 500
         self.DEFAULT_RESPITORY_RATE = 14
@@ -269,44 +270,68 @@ class VentilatorGUI():
         logging.info('Exiting OSV GUI...')
         self.root.destroy()
 
+    # Just changes start/stop state, doesn't effect values
     def _start_stop_pressed(self):
-        # TODO Send a stop message to the controller daemon
         logging.info(self.state)
+        
         # Starting
         if self.state == State.PAUSED:
             self.state = State.RUNNING
-            self.button_startstop.configure(bg='Red', text='Stop')
             Stopped = False
+            self.button_startstop.configure(bg='Red', text='Stop')
         # Stopping
         elif self.state == State.RUNNING:
             self.state = State.PAUSED
-            self.button_startstop.configure(bg='Green', text='Start')
             Stopped = True
-        # Send message
-        oxy = self.oxygenLevelFrame.get_val()
-        vol = self.totalVolumeFrame.get_val()
-        bpm = self.respiratoryRateFrame.get_val()
-        Tinsp = self.inspiratoryPeriodFrame.get_val()
-
-        m = (oxy, vol, bpm, Tinsp, Stopped)
-
+            self.button_startstop.configure(bg='Green', text='Start')
+        
+        # Build and send message from current values
+        m = (self.oxygenlevel, self.totalvolume, 
+            self.respiratoryrate, self.inspitoryperiod, 
+            Stopped)
         self.setpntpub.send_pyobj(m)
 
-
+    # Just changes values, doesn't effect start/stop state
     def _apply_pressed(self):
-        if self.state == State.RUNNING:
-            oxy = self.oxygenLevelFrame.get_val()
-            vol = self.totalVolumeFrame.get_val()
-            bpm = self.respiratoryRateFrame.get_val()
-            Tinsp = self.inspiratoryPeriodFrame.get_val()
-            Stopped = False
+            # Update current values
+            self.oxygenlevel = self.oxygenLevelFrame.get_val()
+            self.totalvolume = self.totalVolumeFrame.get_val()
+            self.respiratoryrate = self.respiratoryRateFrame.get_val()
+            self.inspitoryperiod = self.inspiratoryPeriodFrame.get_val()
 
-            m = (oxy, vol, bpm, Tinsp, Stopped)
+            # Check if running
+            if self.state = State.RUNNING:
+                Stopped = False
+            elif self.state = State.PAUSED:
+                Stopped = True
 
+
+            # Build and send message from current values
+            m = (self.oxygenlevel, self.totalvolume, 
+                self.respiratoryrate, self.inspitoryperiod, 
+                Stopped)
             self.setpntpub.send_pyobj(m)
+
+    # Heartbeat message sender
+    # Runs on startup and then every ZMQ_HEARTBEAT_INTERVAL_MS
+    def heartbeat(self):
+            if self.state = State.RUNNING:
+                Stopped = False
+            elif self.state = State.PAUSED:
+                Stopped = True
+
+            # Build and send message from current values
+            m = (self.oxygenlevel, self.totalvolume, 
+                self.respiratoryrate, self.inspitoryperiod, 
+                Stopped)
+            self.setpntpub.send_pyobj(m)
+
+            # Re-run this function in ZMQ_HEARTBEAT_INTERVAL_MS
+            self.after(ZMQ_HEARTBEAT_INTERVAL_MS, heartbeat)
 
 
 # Start the GUI...
 root = tkinter.Tk()
 vgui = VentilatorGUI(root)
+heartbeat(vgui)
 root.mainloop()
