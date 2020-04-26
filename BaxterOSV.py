@@ -18,7 +18,8 @@ class State(Enum):
 
 class ValueControlFrame(tkinter.LabelFrame):
 
-    def __init__(self, master, title, unit, default, minimum, maximum, step, enabled, padx, pady, font, titleFont):
+    def __init__(self, master, title, unit, default, minimum, maximum, 
+    	         step, enabled, padx, pady, font, titleFont):
         self.padx = padx
         self.pady = pady
         tkinter.LabelFrame.__init__(self, master, text=title, font=titleFont)
@@ -178,22 +179,30 @@ class VentilatorGUI():
 
         # Frames to control values sent to daemon
         self.oxygenLevelFrame = ValueControlFrame(
-            self.MainFrame, "Oxygen Level", "%", self.DEFAULT_OXYGEN_LEVEL, self.MIN_OXYGEN_LEVEL, self.MAX_OXYGEN_LEVEL, self.STEP_OXYGEN_LEVEL, 'disabled', self.PADX, self.PADY, font, titleFont)
+            self.MainFrame, "Oxygen Level", "%", self.DEFAULT_OXYGEN_LEVEL, 
+            self.MIN_OXYGEN_LEVEL, self.MAX_OXYGEN_LEVEL, self.STEP_OXYGEN_LEVEL, 
+            'disabled', self.PADX, self.PADY, font, titleFont)
         self.oxygenLevelFrame.grid(
             row=0, column=0, padx=self.PADX, pady=self.PADY, sticky='nesw')
 
         self.totalVolumeFrame = ValueControlFrame(
-            self.MainFrame, "Total Volume", "ml", self.DEFAULT_TOTAL_VOLUME, self.MIN_TOTAL_VOLUME, self.MAX_TOTAL_VOLUME, self.STEP_TOTAL_VOLUME, 'normal', self.PADX, self.PADY, font, titleFont)
+            self.MainFrame, "Total Volume", "ml", self.DEFAULT_TOTAL_VOLUME, 
+            self.MIN_TOTAL_VOLUME, self.MAX_TOTAL_VOLUME, self.STEP_TOTAL_VOLUME, 
+            'normal', self.PADX, self.PADY, font, titleFont)
         self.totalVolumeFrame.grid(
             row=0, column=1, padx=self.PADX, pady=self.PADY, sticky='nesw')
 
         self.respiratoryRateFrame = ValueControlFrame(
-            self.MainFrame, "Respiratory Rate", "bmp", self.DEFAULT_RESPITORY_RATE, self.MIN_RESPITORY_RATE, self.MAX_RESPITORY_RATE, self.STEP_RESPITORY_RATE, 'normal', self.PADX, self.PADY, font, titleFont)
+            self.MainFrame, "Respiratory Rate", "bmp", self.DEFAULT_RESPITORY_RATE, 
+            self.MIN_RESPITORY_RATE, self.MAX_RESPITORY_RATE, self.STEP_RESPITORY_RATE, 
+            'normal', self.PADX, self.PADY, font, titleFont)
         self.respiratoryRateFrame.grid(
             row=1, column=0, padx=self.PADX, pady=self.PADY, sticky='nesw')
 
         self.inspiratoryPeriodFrame = ValueControlFrame(
-            self.MainFrame, "Inspiration Period", "s", self.DEFAULT_INSPITORY_PERIOD, self.MIN_INSPITORY_PERIOD, self.MAX_INSPITORY_PERIOD, self.STEP_INSPITORY_PERIOD, 'normal', self.PADX, self.PADY, font, titleFont)
+            self.MainFrame, "Inspiration Period", "s", self.DEFAULT_INSPITORY_PERIOD, 
+            self.MIN_INSPITORY_PERIOD, self.MAX_INSPITORY_PERIOD, self.STEP_INSPITORY_PERIOD, 
+            'normal', self.PADX, self.PADY, font, titleFont)
         self.inspiratoryPeriodFrame.grid(
             row=1, column=1, padx=self.PADX, pady=self.PADY, sticky='nesw')
 
@@ -263,12 +272,26 @@ class VentilatorGUI():
     def _start_stop_pressed(self):
         # TODO Send a stop message to the controller daemon
         logging.info(self.state)
+        # Starting
         if self.state == State.PAUSED:
             self.state = State.RUNNING
             self.button_startstop.configure(bg='Red', text='Stop')
+            Stopped = False
+        # Stopping
         elif self.state == State.RUNNING:
             self.state = State.PAUSED
             self.button_startstop.configure(bg='Green', text='Start')
+            Stopped = True
+        # Send message
+        oxy = self.oxygenLevelFrame.get_val()
+        vol = self.totalVolumeFrame.get_val()
+        bpm = self.respiratoryRateFrame.get_val()
+        Tinsp = self.inspiratoryPeriodFrame.get_val()
+
+        m = (oxy, vol, bpm, Tinsp, Stopped)
+
+        self.setpntpub.send_pyobj(m)
+
 
     def _apply_pressed(self):
         if self.state == State.RUNNING:
@@ -276,8 +299,9 @@ class VentilatorGUI():
             vol = self.totalVolumeFrame.get_val()
             bpm = self.respiratoryRateFrame.get_val()
             Tinsp = self.inspiratoryPeriodFrame.get_val()
+            Stopped = False
 
-            m = (oxy, vol, bpm, Tinsp)
+            m = (oxy, vol, bpm, Tinsp, Stopped)
 
             self.setpntpub.send_pyobj(m)
 
