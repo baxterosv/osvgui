@@ -8,6 +8,9 @@ from matplotlib.backends.backend_tkagg import (
 # Implement the default Matplotlib key bindings.
 from matplotlib.backend_bases import key_press_handler
 from matplotlib.figure import Figure
+#import animation for continuous graphing update
+import matplotlib.animation as animation
+
 
 import numpy as np
 
@@ -18,6 +21,11 @@ import logging
 import sys
 
 logging.basicConfig(level=logging.INFO)
+
+PLOT_INTERVAL = 0.1 #seconds
+PLOT_LENGTH = 10 #seconds
+BLANK_TIME = 0.2 #seconds
+ARRAY_SIZE = PLOT_LENGTH/PLOT_INTERVAL
 
 
 class State(Enum):
@@ -31,9 +39,15 @@ class GraphFrame(tkinter.LabelFrame):
         tkinter.LabelFrame.__init__(self, master, text=title, font=titleFont)
 
         self.fig = Figure()
-        t = np.arange(0, 3, .01)
-        self.fig.add_subplot(211).plot(t, 2 * np.sin(2 * np.pi * t))
-        self.fig.add_subplot(212).plot(t, 2 * np.sin(2 * np.pi * t))
+        
+        #instantiate array sizes
+        self.t_pts = np.arange(0,PLOT_LENGTH,PLOT_INTERVAL)
+        self.vol_pts = np.empty(ARRAY_SIZE)
+        self.press_pts = np.zeros(ARRAY_SIZE)
+        
+        #add blank graphs
+        self.vol_graph = self.fig.add_subplot(211).plot(t_pts, vol_pts)
+        self.press_graph = self.fig.add_subplot(212).plot(t_pts, press_pts)
 
         self.canvas = FigureCanvasTkAgg(self.fig, master=self)  # A tk.DrawingArea.
         self.canvas.draw()
@@ -43,29 +57,33 @@ class GraphFrame(tkinter.LabelFrame):
 
         self.plot_time = 0
 
-        self.t_pts = np.zeros((1))
-        self.vol_pts = np.zeros((1))
-        self.press_pts = np.zeros((1))
+        #variable for interating through index
+        self.current_index = 0
 
         #self.toolbar = NavigationToolbar2Tk(self.canvas, master)
         #self.toolbar.update()
         #self.canvas.get_tk_widget().pack(side=tkinter.TOP, fill=tkinter.BOTH, expand=1)
 
+    #function to update values from vol_control.py
     def add_point(self, val, t):
-        v, p = val
-        self.t_pts.append(t)
-        self.vol_pts.append(v)
-        self.press_pts.append(p)
-
-
-    def update_graph(self):
-        t = time.time()
-        # TODO remove old data
-        # TODO update data to fit within the current graph window
+        p, v = val
+        self.vol_pts[self.current_index] = v
+        self.press_pts[self.current_index] = p
+        for i in (1,round(BLANK_TIME/PLOT_INTERVAL)):
+            self.vol_pts[(self.current_index+i)%ARRAY_SIZE] = np.NaN
+            self.press_pts[(self.current_index+i)%ARRAY_SIZE] = np.NaN
+        self.current_index = (self.current_index+1)%ARRAY_SIZE
         
 
+    #function to auto-update graphing widget
+    def update_graph(self):
+        #clear graphs for animation
+        self.vol_graph.clear()
+        self.press_graph.clear()
 
-
+        #plotting graphs for animation
+        self.vol_graph(t_pts,vol_pts)
+        self.press_graph(t_pts,press_pts)
 
 
 class ValueControlFrame(tkinter.LabelFrame):
@@ -162,7 +180,7 @@ class VentilatorGUI():
         self.ZMQ_GUI_TOPIC = "ipc:///tmp/gui_setpoint.pipe"
         self.ZMQ_VOL_HEARTBEAT_TOPIC = "ipc:///tmp/vol_data.pipe"
         self.ZMQ_POLL_TIMEOUT_MS = 10
-        self.ZMQ_POLLER_CHECK_PERIOD_MS = 100
+        self.ZMQ_POLLER_CHECK_PERIOD_MS = PLOT_INTERVAL*100
         self.ZMQ_HEARTBEAT_INTERVAL_MS = 1000
         self.DEFAULT_OXYGEN_LEVEL = 40
         self.DEFAULT_TOTAL_VOLUME = 500
@@ -326,6 +344,7 @@ class VentilatorGUI():
         socks = dict(self.poller.poll(self.ZMQ_POLL_TIMEOUT_MS))
         if self.voldatasub in socks:
             self.lastvolheartbeat = self.voldatasub.recv_pyobj()
+            self.graph_test.add_point(self.lastvolheartbeat,time.time())
             self.status.set(self.lastvolheartbeat)
         self.root.after(self.ZMQ_POLLER_CHECK_PERIOD_MS,
                         self._zmq_poll_heartbeat_callback)
@@ -397,5 +416,6 @@ class VentilatorGUI():
 # Start the GUI...
 root = tkinter.Tk()
 vgui = VentilatorGUI(root)
+ani = animation.FuncAnimation(vgui.graph_test.fig,vgui.graph_test.update_graph,interval=PLOT_INTERVAL*1000)
 vgui.heartbeat()
 root.mainloop()
