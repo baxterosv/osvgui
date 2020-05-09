@@ -2,6 +2,15 @@
 # Use update-alternatives to force Python 3.  For instructions, see: https://raspberry-valley.azurewebsites.net/Python-Default-Version/
 
 import tkinter
+
+from matplotlib.backends.backend_tkagg import (
+    FigureCanvasTkAgg, NavigationToolbar2Tk)
+# Implement the default Matplotlib key bindings.
+from matplotlib.backend_bases import key_press_handler
+from matplotlib.figure import Figure
+
+import numpy as np
+
 import zmq
 import time
 from enum import Enum
@@ -14,6 +23,49 @@ logging.basicConfig(level=logging.INFO)
 class State(Enum):
     RUNNING = 1
     PAUSED = 2
+
+
+class GraphFrame(tkinter.LabelFrame):
+
+    def __init__(self, master, title, titleFont, padx, pady, domain):
+        tkinter.LabelFrame.__init__(self, master, text=title, font=titleFont)
+
+        self.fig = Figure()
+        t = np.arange(0, 3, .01)
+        self.fig.add_subplot(211).plot(t, 2 * np.sin(2 * np.pi * t))
+        self.fig.add_subplot(212).plot(t, 2 * np.sin(2 * np.pi * t))
+
+        self.canvas = FigureCanvasTkAgg(self.fig, master=self)  # A tk.DrawingArea.
+        self.canvas.draw()
+        self.canvas.get_tk_widget().grid(row=0, column=0, padx=padx, pady=pady, sticky='nesw')
+
+        self.domain = domain
+
+        self.plot_time = 0
+
+        self.t_pts = np.zeros((1))
+        self.vol_pts = np.zeros((1))
+        self.press_pts = np.zeros((1))
+
+        #self.toolbar = NavigationToolbar2Tk(self.canvas, master)
+        #self.toolbar.update()
+        #self.canvas.get_tk_widget().pack(side=tkinter.TOP, fill=tkinter.BOTH, expand=1)
+
+    def add_point(self, val, t):
+        v, p = val
+        self.t_pts.append(t)
+        self.vol_pts.append(v)
+        self.press_pts.append(p)
+
+
+    def update_graph(self):
+        t = time.time()
+        # TODO remove old data
+        # TODO update data to fit within the current graph window
+        
+
+
+
 
 
 class ValueControlFrame(tkinter.LabelFrame):
@@ -173,6 +225,7 @@ class VentilatorGUI():
         self.MainFrame.grid_rowconfigure(0, weight=2)
         self.MainFrame.grid_rowconfigure(1, weight=2)
         self.MainFrame.grid_rowconfigure(2, weight=1)
+        self.MainFrame.grid_rowconfigure(3, weight=3)
         self.MainFrame.grid_columnconfigure(0, weight=1)
         self.MainFrame.grid_columnconfigure(1, weight=1)
 
@@ -244,6 +297,16 @@ class VentilatorGUI():
         self.lbl9.grid(row=0, column=0, sticky='nesw')
         self.lbl9.config(font=font)
         self.lbl9.configure(anchor='center')
+
+        self.graph_test = GraphFrame(self.MainFrame, "A graph", titleFont, self.PADX, self.PADY)
+        self.graph_test.grid(
+            row=3, column=0, padx=self.PADX, pady=self.PADY, sticky='nesw', columnspan=2)
+        self.graph_test.update()
+        self.graph_test.fig.set_figheight(self.graph_test.winfo_height())
+        self.graph_test.fig.set_figwidth(self.graph_test.winfo_width())
+        self.graph_test.fig.set_dpi(100)
+        self.graph_test.update()
+        
 
         # Set a recurring task to poll for heartbeat from daemons
         self.root.after(self.ZMQ_POLLER_CHECK_PERIOD_MS,
