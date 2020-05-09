@@ -70,7 +70,8 @@ class GraphFrame(tkinter.LabelFrame):
 
 class ValueControlFrame(tkinter.LabelFrame):
 
-    def __init__(self, master, title, unit, default, minimum, maximum, step, enabled, padx, pady, font, titleFont):
+    def __init__(self, master, title, unit, default, minimum, maximum, 
+                 step, enabled, padx, pady, font, titleFont):
         self.padx = padx
         self.pady = pady
         tkinter.LabelFrame.__init__(self, master, text=title, font=titleFont)
@@ -159,9 +160,10 @@ class VentilatorGUI():
     def __init__(self, root):
 
         self.ZMQ_GUI_TOPIC = "ipc:///tmp/gui_setpoint.pipe"
-        self.ZMQ_VOL_HEARTBEAT_TOPIC = "ipc:///tmp/vol_heartbeat.pipe"
+        self.ZMQ_VOL_HEARTBEAT_TOPIC = "ipc:///tmp/vol_data.pipe"
         self.ZMQ_POLL_TIMEOUT_MS = 10
-        self.ZMQ_POLLER_CHECK_PERIOD_MS = 1000
+        self.ZMQ_POLLER_CHECK_PERIOD_MS = 100
+        self.ZMQ_HEARTBEAT_INTERVAL_MS = 1000
         self.DEFAULT_OXYGEN_LEVEL = 40
         self.DEFAULT_TOTAL_VOLUME = 500
         self.DEFAULT_RESPITORY_RATE = 14
@@ -198,12 +200,12 @@ class VentilatorGUI():
         self.setpntpub = ctxt.socket(zmq.PUB)
         self.setpntpub.connect(self.ZMQ_GUI_TOPIC)
 
-        self.volheartbeatsub = ctxt.socket(zmq.SUB)
-        self.volheartbeatsub.bind(self.ZMQ_VOL_HEARTBEAT_TOPIC)
-        self.volheartbeatsub.setsockopt_string(zmq.SUBSCRIBE, '')
+        self.voldatasub = ctxt.socket(zmq.SUB)
+        self.voldatasub.bind(self.ZMQ_VOL_HEARTBEAT_TOPIC)
+        self.voldatasub.setsockopt_string(zmq.SUBSCRIBE, '')
 
         self.poller = zmq.Poller()
-        self.poller.register(self.volheartbeatsub, zmq.POLLIN)
+        self.poller.register(self.voldatasub, zmq.POLLIN)
 
         # NOTE Solves "slow joiner"; better way is to set up local subscriber to check
         time.sleep(0.2)
@@ -231,22 +233,30 @@ class VentilatorGUI():
 
         # Frames to control values sent to daemon
         self.oxygenLevelFrame = ValueControlFrame(
-            self.MainFrame, "Oxygen Level", "%", self.DEFAULT_OXYGEN_LEVEL, self.MIN_OXYGEN_LEVEL, self.MAX_OXYGEN_LEVEL, self.STEP_OXYGEN_LEVEL, 'disabled', self.PADX, self.PADY, font, titleFont)
+            self.MainFrame, "Oxygen Level", "%", self.DEFAULT_OXYGEN_LEVEL, 
+            self.MIN_OXYGEN_LEVEL, self.MAX_OXYGEN_LEVEL, self.STEP_OXYGEN_LEVEL, 
+            'disabled', self.PADX, self.PADY, font, titleFont)
         self.oxygenLevelFrame.grid(
             row=0, column=0, padx=self.PADX, pady=self.PADY, sticky='nesw')
 
         self.totalVolumeFrame = ValueControlFrame(
-            self.MainFrame, "Total Volume", "ml", self.DEFAULT_TOTAL_VOLUME, self.MIN_TOTAL_VOLUME, self.MAX_TOTAL_VOLUME, self.STEP_TOTAL_VOLUME, 'normal', self.PADX, self.PADY, font, titleFont)
+            self.MainFrame, "Total Volume", "ml", self.DEFAULT_TOTAL_VOLUME, 
+            self.MIN_TOTAL_VOLUME, self.MAX_TOTAL_VOLUME, self.STEP_TOTAL_VOLUME, 
+            'normal', self.PADX, self.PADY, font, titleFont)
         self.totalVolumeFrame.grid(
             row=0, column=1, padx=self.PADX, pady=self.PADY, sticky='nesw')
 
         self.respiratoryRateFrame = ValueControlFrame(
-            self.MainFrame, "Respiratory Rate", "bmp", self.DEFAULT_RESPITORY_RATE, self.MIN_RESPITORY_RATE, self.MAX_RESPITORY_RATE, self.STEP_RESPITORY_RATE, 'normal', self.PADX, self.PADY, font, titleFont)
+            self.MainFrame, "Respiratory Rate", "bmp", self.DEFAULT_RESPITORY_RATE, 
+            self.MIN_RESPITORY_RATE, self.MAX_RESPITORY_RATE, self.STEP_RESPITORY_RATE, 
+            'normal', self.PADX, self.PADY, font, titleFont)
         self.respiratoryRateFrame.grid(
             row=1, column=0, padx=self.PADX, pady=self.PADY, sticky='nesw')
 
         self.inspiratoryPeriodFrame = ValueControlFrame(
-            self.MainFrame, "Inspiration Period", "s", self.DEFAULT_INSPITORY_PERIOD, self.MIN_INSPITORY_PERIOD, self.MAX_INSPITORY_PERIOD, self.STEP_INSPITORY_PERIOD, 'normal', self.PADX, self.PADY, font, titleFont)
+            self.MainFrame, "Inspiration Period", "s", self.DEFAULT_INSPITORY_PERIOD, 
+            self.MIN_INSPITORY_PERIOD, self.MAX_INSPITORY_PERIOD, self.STEP_INSPITORY_PERIOD, 
+            'normal', self.PADX, self.PADY, font, titleFont)
         self.inspiratoryPeriodFrame.grid(
             row=1, column=1, padx=self.PADX, pady=self.PADY, sticky='nesw')
 
@@ -314,8 +324,9 @@ class VentilatorGUI():
 
     def _zmq_poll_heartbeat_callback(self):
         socks = dict(self.poller.poll(self.ZMQ_POLL_TIMEOUT_MS))
-        if self.volheartbeatsub in socks:
-            self.lastvolheartbeat = self.volheartbeatsub.recv_pyobj()
+        if self.voldatasub in socks:
+            self.lastvolheartbeat = self.voldatasub.recv_pyobj()
+            self.status.set(self.lastvolheartbeat)
         self.root.after(self.ZMQ_POLLER_CHECK_PERIOD_MS,
                         self._zmq_poll_heartbeat_callback)
 
@@ -323,29 +334,68 @@ class VentilatorGUI():
         logging.info('Exiting OSV GUI...')
         self.root.destroy()
 
+    # Just changes start/stop state, doesn't effect values
     def _start_stop_pressed(self):
-        # TODO Send a stop message to the controller daemon
         logging.info(self.state)
+        
+        # Starting
         if self.state == State.PAUSED:
             self.state = State.RUNNING
+            Stopped = False
             self.button_startstop.configure(bg='Red', text='Stop')
+        # Stopping
         elif self.state == State.RUNNING:
             self.state = State.PAUSED
+            Stopped = True
             self.button_startstop.configure(bg='Green', text='Start')
+        
+        # Build and send message from current values
+        m = (self.oxygenlevel, self.totalvolume, 
+            self.respiratoryrate, self.inspitoryperiod, 
+            Stopped)
+        self.setpntpub.send_pyobj(m)
 
+    # Just changes values, doesn't effect start/stop state
     def _apply_pressed(self):
-        if self.state == State.RUNNING:
-            oxy = self.oxygenLevelFrame.get_val()
-            vol = self.totalVolumeFrame.get_val()
-            bpm = self.respiratoryRateFrame.get_val()
-            Tinsp = self.inspiratoryPeriodFrame.get_val()
+            # Update current values
+            self.oxygenlevel = self.oxygenLevelFrame.get_val()
+            self.totalvolume = self.totalVolumeFrame.get_val()
+            self.respiratoryrate = self.respiratoryRateFrame.get_val()
+            self.inspitoryperiod = self.inspiratoryPeriodFrame.get_val()
 
-            m = (oxy, vol, bpm, Tinsp)
+            # Check if running
+            if self.state == State.RUNNING:
+                Stopped = False
+            elif self.state == State.PAUSED:
+                Stopped = True
 
+
+            # Build and send message from current values
+            m = (self.oxygenlevel, self.totalvolume, 
+                self.respiratoryrate, self.inspitoryperiod, 
+                Stopped)
             self.setpntpub.send_pyobj(m)
+
+    # Heartbeat message sender
+    # Runs on startup and then every ZMQ_HEARTBEAT_INTERVAL_MS
+    def heartbeat(self):
+            if self.state == State.RUNNING:
+                Stopped = False
+            elif self.state == State.PAUSED:
+                Stopped = True
+
+            # Build and send message from current values
+            m = (self.oxygenlevel, self.totalvolume, 
+                self.respiratoryrate, self.inspitoryperiod, 
+                Stopped)
+            self.setpntpub.send_pyobj(m)
+
+            # Re-run this function in ZMQ_HEARTBEAT_INTERVAL_MS
+            self.root.after(self.ZMQ_HEARTBEAT_INTERVAL_MS, self.heartbeat)
 
 
 # Start the GUI...
 root = tkinter.Tk()
 vgui = VentilatorGUI(root)
+vgui.heartbeat()
 root.mainloop()
