@@ -19,7 +19,7 @@ class State(Enum):
 class ValueControlFrame(tkinter.LabelFrame):
 
     def __init__(self, master, title, unit, default, minimum, maximum, 
-    	         step, enabled, padx, pady, font, titleFont):
+                 step, enabled, padx, pady, font, titleFont):
         self.padx = padx
         self.pady = pady
         tkinter.LabelFrame.__init__(self, master, text=title, font=titleFont)
@@ -108,9 +108,9 @@ class VentilatorGUI():
     def __init__(self, root):
 
         self.ZMQ_GUI_TOPIC = "ipc:///tmp/gui_setpoint.pipe"
-        self.ZMQ_VOL_HEARTBEAT_TOPIC = "ipc:///tmp/vol_heartbeat.pipe"
+        self.ZMQ_VOL_HEARTBEAT_TOPIC = "ipc:///tmp/vol_data.pipe"
         self.ZMQ_POLL_TIMEOUT_MS = 10
-        self.ZMQ_POLLER_CHECK_PERIOD_MS = 1000
+        self.ZMQ_POLLER_CHECK_PERIOD_MS = 100
         self.ZMQ_HEARTBEAT_INTERVAL_MS = 1000
         self.DEFAULT_OXYGEN_LEVEL = 40
         self.DEFAULT_TOTAL_VOLUME = 500
@@ -148,12 +148,12 @@ class VentilatorGUI():
         self.setpntpub = ctxt.socket(zmq.PUB)
         self.setpntpub.connect(self.ZMQ_GUI_TOPIC)
 
-        self.volheartbeatsub = ctxt.socket(zmq.SUB)
-        self.volheartbeatsub.bind(self.ZMQ_VOL_HEARTBEAT_TOPIC)
-        self.volheartbeatsub.setsockopt_string(zmq.SUBSCRIBE, '')
+        self.voldatasub = ctxt.socket(zmq.SUB)
+        self.voldatasub.bind(self.ZMQ_VOL_HEARTBEAT_TOPIC)
+        self.voldatasub.setsockopt_string(zmq.SUBSCRIBE, '')
 
         self.poller = zmq.Poller()
-        self.poller.register(self.volheartbeatsub, zmq.POLLIN)
+        self.poller.register(self.voldatasub, zmq.POLLIN)
 
         # NOTE Solves "slow joiner"; better way is to set up local subscriber to check
         time.sleep(0.2)
@@ -261,8 +261,9 @@ class VentilatorGUI():
 
     def _zmq_poll_heartbeat_callback(self):
         socks = dict(self.poller.poll(self.ZMQ_POLL_TIMEOUT_MS))
-        if self.volheartbeatsub in socks:
-            self.lastvolheartbeat = self.volheartbeatsub.recv_pyobj()
+        if self.voldatasub in socks:
+            self.lastvolheartbeat = self.voldatasub.recv_pyobj()
+            self.status.set(self.lastvolheartbeat)
         self.root.after(self.ZMQ_POLLER_CHECK_PERIOD_MS,
                         self._zmq_poll_heartbeat_callback)
 
@@ -300,9 +301,9 @@ class VentilatorGUI():
             self.inspitoryperiod = self.inspiratoryPeriodFrame.get_val()
 
             # Check if running
-            if self.state = State.RUNNING:
+            if self.state == State.RUNNING:
                 Stopped = False
-            elif self.state = State.PAUSED:
+            elif self.state == State.PAUSED:
                 Stopped = True
 
 
@@ -315,9 +316,9 @@ class VentilatorGUI():
     # Heartbeat message sender
     # Runs on startup and then every ZMQ_HEARTBEAT_INTERVAL_MS
     def heartbeat(self):
-            if self.state = State.RUNNING:
+            if self.state == State.RUNNING:
                 Stopped = False
-            elif self.state = State.PAUSED:
+            elif self.state == State.PAUSED:
                 Stopped = True
 
             # Build and send message from current values
@@ -327,11 +328,11 @@ class VentilatorGUI():
             self.setpntpub.send_pyobj(m)
 
             # Re-run this function in ZMQ_HEARTBEAT_INTERVAL_MS
-            self.after(ZMQ_HEARTBEAT_INTERVAL_MS, heartbeat)
+            self.root.after(self.ZMQ_HEARTBEAT_INTERVAL_MS, self.heartbeat)
 
 
 # Start the GUI...
 root = tkinter.Tk()
 vgui = VentilatorGUI(root)
-heartbeat(vgui)
+vgui.heartbeat()
 root.mainloop()
