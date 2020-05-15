@@ -25,7 +25,7 @@ logging.basicConfig(level=logging.INFO)
 PLOT_INTERVAL = 0.1 #seconds
 PLOT_LENGTH = 10 #seconds
 BLANK_TIME = 0.2 #seconds
-ARRAY_SIZE = PLOT_LENGTH/PLOT_INTERVAL
+ARRAY_SIZE = int(PLOT_LENGTH/PLOT_INTERVAL)
 
 
 class State(Enum):
@@ -35,10 +35,10 @@ class State(Enum):
 
 class GraphFrame(tkinter.LabelFrame):
 
-    def __init__(self, master, title, titleFont, padx, pady, domain):
+    def __init__(self, master, title, titleFont, padx, pady): #, domain):
         tkinter.LabelFrame.__init__(self, master, text=title, font=titleFont)
 
-        self.fig = Figure()
+        self.fig = Figure(figsize=(10,2),dpi=100)
         
         #instantiate array sizes
         self.t_pts = np.arange(0,PLOT_LENGTH,PLOT_INTERVAL)
@@ -46,14 +46,16 @@ class GraphFrame(tkinter.LabelFrame):
         self.press_pts = np.zeros(ARRAY_SIZE)
         
         #add blank graphs
-        self.vol_graph = self.fig.add_subplot(211).plot(t_pts, vol_pts)
-        self.press_graph = self.fig.add_subplot(212).plot(t_pts, press_pts)
+        self.graph_vol = self.fig.add_subplot(211)
+        self.graph_press = self.fig.add_subplot(212)
+        self.graph_vol.plot(self.t_pts, self.vol_pts)
+        self.graph_press.plot(self.t_pts, self.press_pts)
 
         self.canvas = FigureCanvasTkAgg(self.fig, master=self)  # A tk.DrawingArea.
-        self.canvas.draw()
         self.canvas.get_tk_widget().grid(row=0, column=0, padx=padx, pady=pady, sticky='nesw')
+        self.canvas.draw()
 
-        self.domain = domain
+        #self.domain = domain
 
         self.plot_time = 0
 
@@ -65,7 +67,18 @@ class GraphFrame(tkinter.LabelFrame):
         #self.canvas.get_tk_widget().pack(side=tkinter.TOP, fill=tkinter.BOTH, expand=1)
 
     #function to update values from vol_control.py
-    def add_point(self, val, t):
+    # def add_point(self, val, t):
+    #     p, v = val
+    #     self.vol_pts[self.current_index] = v
+    #     self.press_pts[self.current_index] = p
+    #     for i in (1,round(BLANK_TIME/PLOT_INTERVAL)):
+    #         self.vol_pts[(self.current_index+i)%ARRAY_SIZE] = np.NaN
+    #         self.press_pts[(self.current_index+i)%ARRAY_SIZE] = np.NaN
+    #     self.current_index = (self.current_index+1)%ARRAY_SIZE
+        
+
+    #function to auto-update graphing widget
+    def update_graph(self, val):
         p, v = val
         self.vol_pts[self.current_index] = v
         self.press_pts[self.current_index] = p
@@ -73,17 +86,20 @@ class GraphFrame(tkinter.LabelFrame):
             self.vol_pts[(self.current_index+i)%ARRAY_SIZE] = np.NaN
             self.press_pts[(self.current_index+i)%ARRAY_SIZE] = np.NaN
         self.current_index = (self.current_index+1)%ARRAY_SIZE
+
+        self.graph_press.clear()
+        self.graph_vol.clear()
+
+        self.graph_press.plot(self.t_pts, self.press_pts)
+        self.graph_vol.plot(self.t_pts, self.vol_pts)
+
+        self.graph_press.set_ylabel('Pressure (PSI)')
+        self.graph_vol.set_ylabel('Volume (ml)')
+        self.graph_vol.set_xlabel('Time (s)')
         
 
-    #function to auto-update graphing widget
-    def update_graph(self):
-        #clear graphs for animation
-        self.vol_graph.clear()
-        self.press_graph.clear()
-
-        #plotting graphs for animation
-        self.vol_graph(t_pts,vol_pts)
-        self.press_graph(t_pts,press_pts)
+        self.fig.set_size_inches(10,2) #For some reason (probably a bug in a library) the size gets forgotten and causes error
+        self.canvas.draw()
 
 
 class ValueControlFrame(tkinter.LabelFrame):
@@ -180,7 +196,7 @@ class VentilatorGUI():
         self.ZMQ_GUI_TOPIC = "ipc:///tmp/gui_setpoint.pipe"
         self.ZMQ_VOL_HEARTBEAT_TOPIC = "ipc:///tmp/vol_data.pipe"
         self.ZMQ_POLL_TIMEOUT_MS = 10
-        self.ZMQ_POLLER_CHECK_PERIOD_MS = PLOT_INTERVAL*100
+        self.ZMQ_POLLER_CHECK_PERIOD_MS = int(PLOT_INTERVAL*100)
         self.ZMQ_HEARTBEAT_INTERVAL_MS = 1000
         self.DEFAULT_OXYGEN_LEVEL = 40
         self.DEFAULT_TOTAL_VOLUME = 500
@@ -344,7 +360,7 @@ class VentilatorGUI():
         socks = dict(self.poller.poll(self.ZMQ_POLL_TIMEOUT_MS))
         if self.voldatasub in socks:
             self.lastvolheartbeat = self.voldatasub.recv_pyobj()
-            self.graph_test.add_point(self.lastvolheartbeat,time.time())
+            self.graph_test.update_graph(self.lastvolheartbeat)
             self.status.set(self.lastvolheartbeat)
         self.root.after(self.ZMQ_POLLER_CHECK_PERIOD_MS,
                         self._zmq_poll_heartbeat_callback)
@@ -416,6 +432,5 @@ class VentilatorGUI():
 # Start the GUI...
 root = tkinter.Tk()
 vgui = VentilatorGUI(root)
-ani = animation.FuncAnimation(vgui.graph_test.fig,vgui.graph_test.update_graph,interval=PLOT_INTERVAL*1000)
 vgui.heartbeat()
 root.mainloop()
