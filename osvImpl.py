@@ -59,7 +59,7 @@ class OSV(QtWidgets.QMainWindow):
 
         self.zmq_poll_lock = Lock()
 
-        self.startStopBool = False
+        self.stoppedBool = True
 
         self.val_tv = ConstrainedIncrementedSetAndRedDimensionalValue(
             unit='ml')
@@ -204,11 +204,11 @@ class OSV(QtWidgets.QMainWindow):
         if self.current_set_controls_sub in socks:
             r = self.current_set_controls_sub.recv_pyobj()
             with self.zmq_poll_lock:
-                tv, ie, rr, ss = r
+                tv, ie, rr, sb = r
                 self.val_tv.setRedValue(tv)
                 self.val_ie.setRedValue(ie)
                 self.val_rr.setRedValue(rr)
-                self.startStopBool = ss
+                self.stoppedBool = sb
             self._update
 
         if self.osv_status_sub in socks:
@@ -218,7 +218,7 @@ class OSV(QtWidgets.QMainWindow):
 
     def _startStopClicked(self):
         with self.zmq_poll_lock:
-            if self.startStopBool:
+            if self.stoppedBool:
                 s = (None, self.val_tv.getValue(),
                     self.val_ie.getValue(), self.val_rr.getValue(), False)
                 self.control_setpoints_pub.send_pyobj(s)
@@ -228,7 +228,7 @@ class OSV(QtWidgets.QMainWindow):
                 self.control_setpoints_pub.send_pyobj(s)
 
     def _updateStartStopButton(self):
-        if self.startStopBool:
+        if not self.stoppedBool:
             self.ui.pushButtonStart.setText('Stop')
             self.ui.pushButtonStart.setStyleSheet(
                 "background-color: rgb(255, 0, 0);\n")
@@ -246,7 +246,7 @@ class OSV(QtWidgets.QMainWindow):
 
         with self.zmq_poll_lock:
             s = (None, self.val_tv.getValue(),
-                 self.val_ie.getValue(), self.val_rr.getValue(), self.startStopBool)
+                 self.val_ie.getValue(), self.val_rr.getValue(), self.stoppedBool)
         self.control_setpoints_pub.send_pyobj(s)
 
     def _muteAlarmClicked(self):
