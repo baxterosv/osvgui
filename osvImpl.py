@@ -184,9 +184,6 @@ class OSV(QtWidgets.QMainWindow):
         self.control_setpoints_pub = self.ctxt.socket(zmq.PUB)
         self.control_setpoints_pub.connect(ZMQ_CONTROL_SETPOINTS)
 
-        self.start_stop_commands_pub = self.ctxt.socket(zmq.PUB)
-        self.start_stop_commands_pub.connect(ZMQ_START_STOP_COMMANDS)
-
         self.mute_alarms_pub = self.ctxt.socket(zmq.PUB)
         self.mute_alarms_pub.connect(ZMQ_MUTE_ALARMS)
 
@@ -220,10 +217,15 @@ class OSV(QtWidgets.QMainWindow):
             raise NotImplementedError
 
     def _startStopClicked(self):
-        if self.startStopBool:
-            self.start_stop_commands_pub.send_pyobj(False)
-        else:
-            self.start_stop_commands_pub.send_pyobj(True)
+        with self.zmq_poll_lock:
+            if self.startStopBool:
+                s = (None, self.val_tv.getValue(),
+                    self.val_ie.getValue(), self.val_rr.getValue(), False)
+                self.control_setpoints_pub.send_pyobj(s)
+            else:
+                s = (None, self.val_tv.getValue(),
+                    self.val_ie.getValue(), self.val_rr.getValue(), True)
+                self.control_setpoints_pub.send_pyobj(s)
 
     def _updateStartStopButton(self):
         if self.startStopBool:
@@ -243,8 +245,8 @@ class OSV(QtWidgets.QMainWindow):
         self.alarm_setpoints_pub.send_pyobj(s)
 
         with self.zmq_poll_lock:
-            s = (self.val_tv.getValue(),
-                 self.val_ie.getValue(), self.val_rr.getValue())
+            s = (None, self.val_tv.getValue(),
+                 self.val_ie.getValue(), self.val_rr.getValue(), self.startStopBool)
         self.control_setpoints_pub.send_pyobj(s)
 
     def _muteAlarmClicked(self):
