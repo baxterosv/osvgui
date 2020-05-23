@@ -210,7 +210,7 @@ class OSV(QtWidgets.QMainWindow):
                 self.val_ie.setRedValue(ie)
                 self.val_rr.setRedValue(rr)
                 self.stoppedBool = sb
-            self._update
+            self._updateStartStopButton()
 
         if self.osv_status_sub in socks:
             raise NotImplementedError
