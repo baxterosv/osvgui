@@ -230,11 +230,11 @@ class OSV(QtWidgets.QMainWindow):
 
     def _updateStartStopButton(self):
         if not self.stoppedBool:
-            self.ui.pushButtonStart.setText('Stop')
+            self.ui.pushButtonStart.setText('STOP')
             self.ui.pushButtonStart.setStyleSheet(
                 "background-color: rgb(255, 0, 0);\n")
         else:
-            self.ui.pushButtonStart.setText('Start')
+            self.ui.pushButtonStart.setText('START')
             self.ui.pushButtonStart.setStyleSheet(
                 "background-color: rgb(0, 255, 0);\n")
 
