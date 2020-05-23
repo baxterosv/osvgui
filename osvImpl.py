@@ -221,11 +221,11 @@ class OSV(QtWidgets.QMainWindow):
         with self.zmq_poll_lock:
             if self.stoppedBool:
                 s = (None, self.val_tv.getValue(),
-                     self.val_ie.getValue(), self.val_rr.getValue(), False)
+                     self.val_rr.getValue(), self.val_ie.getValue(), False)
                 self.control_setpoints_pub.send_pyobj(s)
             else:
                 s = (None, self.val_tv.getValue(),
-                     self.val_ie.getValue(), self.val_rr.getValue(), True)
+                     self.val_rr.getValue(), self.val_ie.getValue(), True)
                 self.control_setpoints_pub.send_pyobj(s)
 
     def _updateStartStopButton(self):
