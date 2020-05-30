@@ -79,12 +79,6 @@ class OSV(QtWidgets.QMainWindow):
 
         self.val_labels = [self.ui.label_DO2, self.ui.label_IE, self.ui.label_PP,
                            self.ui.label_RR, self.ui.label_TV, self.ui.label_PEEP]
-        '''
-        self.up_buttons = [self.ui.pushButton_DO2_Up, self.ui.pushButton_IE_Up, self.ui.pushButton_PP_Up,
-                           self.ui.pushButton_RR_Up, self.ui.pushButton_TV_Up, self.ui.pushButton_PEEP_Up]
-        self.down_buttons = [self.ui.pushButton_DO2_Down, self.ui.pushButton_IE_Down, self.ui.pushButton_PP_Down,
-                             self.ui.pushButton_RR_Down, self.ui.pushButton_TV_Down, self.ui.pushButton_PEEP_Down]
-        '''
 
         for a in list(zip(self.vals, self.val_labels)):
             r = None
