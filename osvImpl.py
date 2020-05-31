@@ -12,7 +12,7 @@ import logging
 logging.basicConfig(level=logging.INFO)
 
 # Alarm enumeration
-class Alarm(Enum):
+class AlarmState(Enum):
     NONE = 0			# No Alarms Present
     TRIGGERED = 1		# Alarm currently triggered
     SUPPRESSED = 2		# Alarm currently suppressed
