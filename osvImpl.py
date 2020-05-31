@@ -4,11 +4,18 @@ from PyQt5 import QtWidgets
 from osvGUI import Ui_MainWindow
 from zmqTopics import *
 from mediacalGraph import MedicalGraph
+from enum import Enum
 
 import zmq
 
 import logging
 logging.basicConfig(level=logging.INFO)
+
+# Alarm enumeration
+class Alarm(Enum):
+    NONE = 0			# No Alarms Present
+    TRIGGERED = 1		# Alarm currently triggered
+    SUPPRESSED = 2		# Alarm currently suppressed
 
 
 class ConstrainedIncrementedSetAndRedDimensionalValue():
@@ -60,6 +67,14 @@ class OSV(QtWidgets.QMainWindow):
         self.zmq_poll_lock = Lock()
 
         self.stoppedBool = True
+
+        self.statusText = "GUI Initializing"
+        self.statusColor = (255,255,255)
+        self._updateStatus()
+
+        self.alarmState = Alarm.NONE
+        self.ui.pushButtonMuteAlarm.setEnabled(False)
+
 
         self.val_tv = ConstrainedIncrementedSetAndRedDimensionalValue(val=500, step=100, maximum=1000, minimum=200,
                                                                       unit='ml')
@@ -119,6 +134,7 @@ class OSV(QtWidgets.QMainWindow):
 
         self.ui.comboBoxModeSelect.addItems(
             ['Volume Control', 'Pressure Control', 'Assisted Breathing'])
+        self.ui.comboBoxModeSelect.setEnabled(False)
 
     def _setupGraph(self):
         self.mg = MedicalGraph(self.graph_data_sub, self.graph_data_poller)
@@ -195,6 +211,7 @@ class OSV(QtWidgets.QMainWindow):
                 self.val_do2.setRedValue(o2)
                 self.val_peep.setRedValue(peep)
                 self.val_pp.setRedValue(peak)
+            self.update()
 
         if self.current_set_controls_sub in socks:
             r = self.current_set_controls_sub.recv_pyobj()
@@ -204,21 +221,37 @@ class OSV(QtWidgets.QMainWindow):
                 self.val_ie.setRedValue(ie)
                 self.val_rr.setRedValue(rr)
                 self.stoppedBool = sb
+            self.update()
             self._updateStartStopButton()
 
         if self.osv_status_sub in socks:
-            raise NotImplementedError
+            r = self.osv_status_sub.recv_pyobj()
+            with self.zmq_poll_lock:
+            	self.statusText, self.statusColor = r
+            self._updateStatus()
+
         if self.triggered_alarms_sub in socks:
-            raise NotImplementedError
+            r = self.triggered_alarms_sub.recv_pyobj()
+            with self.zmq_poll_lock:
+            	self.alarmState = r
+            	if alarmState == Alarm.TRIGGERED:
+            		self.ui.pushButtonMuteAlarm.setEnabled(True)
+            	else:
+            		self.ui.pushButtonMuteAlarm.setEnabled(False)
+
+    def _updateStatus(self):
+    	self.ui.labelStatus.setText(self.statusText)
+    	colorStr = (f"background-color: rgb({self.statusColor[0]},{self.statusColor[1]},{self.statusColor[2]});")
+    	self.ui.labelStatus.setStyleSheet(colorStr)
 
     def _startStopClicked(self):
         with self.zmq_poll_lock:
             if self.stoppedBool:
-                s = (None, self.val_tv.getValue(),
+                s = (self.val_tv.getValue(),
                      self.val_rr.getValue(), self.val_ie.getValue(), False)
                 self.control_setpoints_pub.send_pyobj(s)
             else:
-                s = (None, self.val_tv.getValue(),
+                s = (self.val_tv.getValue(),
                      self.val_rr.getValue(), self.val_ie.getValue(), True)
                 self.control_setpoints_pub.send_pyobj(s)
 
@@ -240,12 +273,14 @@ class OSV(QtWidgets.QMainWindow):
         self.alarm_setpoints_pub.send_pyobj(s)
 
         with self.zmq_poll_lock:
-            s = (None, self.val_tv.getValue(),
-                 self.val_ie.getValue(), self.val_rr.getValue(), self.stoppedBool)
+            s = (self.val_tv.getValue(), self.val_ie.getValue(),
+            	 self.val_rr.getValue(), self.stoppedBool)
         self.control_setpoints_pub.send_pyobj(s)
 
     def _muteAlarmClicked(self):
-        raise NotImplementedError
+        with self.zmq_poll_lock:
+        	s = (True)
+        self.mute_alarms_pub.send_pyobj(s)
 
     def _quitClicked(self):
         self.app.quit()
