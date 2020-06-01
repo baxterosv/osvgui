@@ -171,9 +171,9 @@ class OSV(QtWidgets.QMainWindow):
         self.measured_values_sub.bind(ZMQ_MEASURED_VALUES)
         self.measured_values_sub.setsockopt_string(zmq.SUBSCRIBE, '')
 
-        self.current_set_controls_sub = self.ctxt.socket(zmq.SUB)
-        self.current_set_controls_sub.bind(ZMQ_CURRENT_SET_CONTROLS)
-        self.current_set_controls_sub.setsockopt_string(zmq.SUBSCRIBE, '')
+        self.controller_settings_echo_sub = self.ctxt.socket(zmq.SUB)
+        self.controller_settings_echo_sub.bind(ZMQ_CONTROLLER_SETTINGS_ECHO)
+        self.controller_settings_echo_sub.setsockopt_string(zmq.SUBSCRIBE, '')
 
         self.osv_status_sub = self.ctxt.socket(zmq.SUB)
         self.osv_status_sub.bind(ZMQ_OSV_STATUS)
@@ -211,14 +211,14 @@ class OSV(QtWidgets.QMainWindow):
                 self.val_pp.setRedValue(peak)
             self._updateControlGroupBoxValues()
 
-        if self.current_set_controls_sub in socks:
-            r = self.current_set_controls_sub.recv_pyobj()
+        if self.controller_settings_echo_sub in socks:
+            r = self.controller_settings_echo_sub.recv_pyobj()
             with self.zmq_poll_lock:
-                tv, ie, rr, sb = r
-                self.val_tv.setRedValue(tv)
-                self.val_ie.setRedValue(ie)
-                self.val_rr.setRedValue(rr)
-                self.stoppedBool = sb
+                stopped, opmode, vtv, vie, vrr, vdo2, vpeep, vpp = r
+                self.val_tv.setRedValue(vtv)
+                self.val_ie.setRedValue(vie)
+                self.val_rr.setRedValue(vrr)
+                self.stoppedBool = stopped
             self._updateStartStopButton()
             self._updateControlGroupBoxValues()
 
