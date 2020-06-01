@@ -16,6 +16,7 @@ class AlarmState(Enum):
     NONE = 0			# No Alarms Present
     TRIGGERED = 1		# Alarm currently triggered
     SUPPRESSED = 2		# Alarm currently suppressed
+    DISABLED = 3		# Alarm not monitored
 
 
 class ConstrainedIncrementedSetAndRedDimensionalValue():
@@ -69,12 +70,11 @@ class OSV(QtWidgets.QMainWindow):
         self.stoppedBool = True
 
         self.statusText = "GUI Initializing"
-        self.statusColor = (255,255,255)
+        self.statusColor = (255, 255, 255)
         self._updateStatus()
 
         self.alarmState = Alarm.NONE
         self.ui.pushButtonMuteAlarm.setEnabled(False)
-
 
         self.val_tv = ConstrainedIncrementedSetAndRedDimensionalValue(val=500, step=100, maximum=1000, minimum=200,
                                                                       unit='ml')
@@ -227,22 +227,23 @@ class OSV(QtWidgets.QMainWindow):
         if self.osv_status_sub in socks:
             r = self.osv_status_sub.recv_pyobj()
             with self.zmq_poll_lock:
-            	self.statusText, self.statusColor = r
+                self.statusText, self.statusColor = r
             self._updateStatus()
 
         if self.triggered_alarms_sub in socks:
             r = self.triggered_alarms_sub.recv_pyobj()
             with self.zmq_poll_lock:
-            	self.alarmState = r
-            	if alarmState == Alarm.TRIGGERED:
-            		self.ui.pushButtonMuteAlarm.setEnabled(True)
-            	else:
-            		self.ui.pushButtonMuteAlarm.setEnabled(False)
+                self.alarmState = r
+                if alarmState == Alarm.TRIGGERED:
+                    self.ui.pushButtonMuteAlarm.setEnabled(True)
+                else:
+                    self.ui.pushButtonMuteAlarm.setEnabled(False)
 
     def _updateStatus(self):
-    	self.ui.labelStatus.setText(self.statusText)
-    	colorStr = (f"background-color: rgb({self.statusColor[0]},{self.statusColor[1]},{self.statusColor[2]});")
-    	self.ui.labelStatus.setStyleSheet(colorStr)
+        self.ui.labelStatus.setText(self.statusText)
+        colorStr = (
+            f"background-color: rgb({self.statusColor[0]},{self.statusColor[1]},{self.statusColor[2]});")
+        self.ui.labelStatus.setStyleSheet(colorStr)
 
     def _startStopClicked(self):
         with self.zmq_poll_lock:
@@ -274,12 +275,12 @@ class OSV(QtWidgets.QMainWindow):
 
         with self.zmq_poll_lock:
             s = (self.val_tv.getValue(), self.val_ie.getValue(),
-            	 self.val_rr.getValue(), self.stoppedBool)
+                 self.val_rr.getValue(), self.stoppedBool)
         self.control_setpoints_pub.send_pyobj(s)
 
     def _muteAlarmClicked(self):
         with self.zmq_poll_lock:
-        	s = (True)
+            s = (True)
         self.mute_alarms_pub.send_pyobj(s)
 
     def _quitClicked(self):

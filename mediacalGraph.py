@@ -21,8 +21,8 @@ class MedicalGraph(FigureCanvas):
         # TODO Make the figure size configurable or automatic
         f, (ax1, ax2) = plt.subplots(2, 1, sharex=True)
 
-        ax1.set_ylabel('Volume')
-        ax2.set_ylabel('Pressure')
+        ax1.set_ylabel('Flow Rate (L/min)')
+        ax2.set_ylabel('Pressure (cm-H20)')
         ax2.set_xlabel('Time (s)')
 
         ax1.set_xlim(0, domain)
