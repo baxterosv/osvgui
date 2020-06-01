@@ -11,6 +11,8 @@ ZMQ_OSV_STATUS = "ipc:///tmp/osv_status.pipe"
 # e.g.: Alarm.TRIGGERED
 ZMQ_TRIGGERED_ALARMS = "ipc:///tmp/triggered_alarms.pipe"
 
+ZMQ_CONTROLLER_SETTINGS_ECHO = "ipc:///tmp/controller_settings_echo"
+
 
 ##### GUI Published #####
 ZMQ_ALARM_SETPOINTS = "ipc:///tmp/alarm_setpoints.pipe"
@@ -23,3 +25,5 @@ ZMQ_MUTE_ALARMS = "ipc:///tmp/mute_alarms.pipe"
 
 
 ZMQ_CONTROL_MODE = "ipc:///tmp/control_mode.pipe"
+
+ZMQ_CONTROLLER_SETTINGS = "ipc:///tmp/controller_settings"

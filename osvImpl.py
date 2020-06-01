@@ -11,12 +11,10 @@ import zmq
 import logging
 logging.basicConfig(level=logging.INFO)
 
-# Alarm enumeration
-class AlarmState(Enum):
-    NONE = 0			# No Alarms Present
-    TRIGGERED = 1		# Alarm currently triggered
-    SUPPRESSED = 2		# Alarm currently suppressed
-    DISABLED = 3		# Alarm not monitored
+class OperationMode(Enum):
+    VOLUME_CONTROL = 0
+    PRESSURE_CONTROL = 1
+    PRESSURE_SUPPORTED_CONTROL = 2
 
 
 class ConstrainedIncrementedSetAndRedDimensionalValue():
@@ -69,11 +67,13 @@ class OSV(QtWidgets.QMainWindow):
 
         self.stoppedBool = True
 
+        self.operation_mode = OperationMode.VOLUME_CONTROL
+
         self.statusText = "GUI Initializing"
         self.statusColor = (255, 255, 255)
         self._updateStatus()
 
-        self.alarmState = Alarm.NONE
+        self.alarmState = False
         self.ui.pushButtonMuteAlarm.setEnabled(False)
 
         self.val_tv = ConstrainedIncrementedSetAndRedDimensionalValue(val=500, step=100, maximum=1000, minimum=200,
@@ -132,9 +132,13 @@ class OSV(QtWidgets.QMainWindow):
         self.ui.pushButtonMuteAlarm.clicked.connect(self._muteAlarmClicked)
         self.ui.pushButtonQuit.clicked.connect(self._quitClicked)
 
+        ''' TODO Assisted breathing not yet implemented
         self.ui.comboBoxModeSelect.addItems(
             ['Volume Control', 'Pressure Control', 'Assisted Breathing'])
-        self.ui.comboBoxModeSelect.setEnabled(False)
+        '''
+        self.ui.comboBoxModeSelect.addItems(
+            ['Volume Control', 'Pressure Control'])
+
 
     def _setupGraph(self):
         self.mg = MedicalGraph(self.graph_data_sub, self.graph_data_poller)
@@ -189,17 +193,11 @@ class OSV(QtWidgets.QMainWindow):
         self.subscribers_poller.register(self.osv_status_sub, zmq.POLLIN)
         self.subscribers_poller.register(self.triggered_alarms_sub, zmq.POLLIN)
 
-        self.alarm_setpoints_pub = self.ctxt.socket(zmq.PUB)
-        self.alarm_setpoints_pub.connect(ZMQ_ALARM_SETPOINTS)
-
-        self.control_setpoints_pub = self.ctxt.socket(zmq.PUB)
-        self.control_setpoints_pub.connect(ZMQ_CONTROL_SETPOINTS)
+        self.controller_settings_pub = self.ctxt.socket(zmq.PUB)
+        self.controller_settings_pub.connect(ZMQ_CONTROLLER_SETTINGS)
 
         self.mute_alarms_pub = self.ctxt.socket(zmq.PUB)
         self.mute_alarms_pub.connect(ZMQ_MUTE_ALARMS)
-
-        self.control_mode_pub = self.ctxt.socket(zmq.PUB)
-        self.control_mode_pub.connect(ZMQ_CONTROL_MODE)
 
     def _callbackZMQPolling(self):
         socks = dict(self.subscribers_poller.poll(self.ZMQ_POLLING_PERIOD))
@@ -211,7 +209,7 @@ class OSV(QtWidgets.QMainWindow):
                 self.val_do2.setRedValue(o2)
                 self.val_peep.setRedValue(peep)
                 self.val_pp.setRedValue(peak)
-            self.update()
+            self._updateControlGroupBoxValues()
 
         if self.current_set_controls_sub in socks:
             r = self.current_set_controls_sub.recv_pyobj()
@@ -221,8 +219,8 @@ class OSV(QtWidgets.QMainWindow):
                 self.val_ie.setRedValue(ie)
                 self.val_rr.setRedValue(rr)
                 self.stoppedBool = sb
-            self.update()
             self._updateStartStopButton()
+            self._updateControlGroupBoxValues()
 
         if self.osv_status_sub in socks:
             r = self.osv_status_sub.recv_pyobj()
@@ -234,10 +232,13 @@ class OSV(QtWidgets.QMainWindow):
             r = self.triggered_alarms_sub.recv_pyobj()
             with self.zmq_poll_lock:
                 self.alarmState = r
-                if alarmState == Alarm.TRIGGERED:
+                if self.alarmState:
                     self.ui.pushButtonMuteAlarm.setEnabled(True)
                 else:
                     self.ui.pushButtonMuteAlarm.setEnabled(False)
+
+        if len(socks) > 0:
+            self.update()
 
     def _updateStatus(self):
         self.ui.labelStatus.setText(self.statusText)
@@ -245,16 +246,37 @@ class OSV(QtWidgets.QMainWindow):
             f"background-color: rgb({self.statusColor[0]},{self.statusColor[1]},{self.statusColor[2]});")
         self.ui.labelStatus.setStyleSheet(colorStr)
 
+    def _updateControlGroupBoxValues(self):
+        for a in list(zip(self.vals, self.val_labels)):
+            r = None
+            v = a[0].getValue()
+            u = a[0].getUnit()
+            a[1].setText(f'{r}/{v} {u}')
+
     def _startStopClicked(self):
         with self.zmq_poll_lock:
             if self.stoppedBool:
-                s = (self.val_tv.getValue(),
-                     self.val_rr.getValue(), self.val_ie.getValue(), False)
-                self.control_setpoints_pub.send_pyobj(s)
+                vdo2 = self.val_do2.getValue()
+                vpeep = self.val_peep.getValue()
+                vpp = self.val_pp.getValue()
+                vtv = self.val_tv.getValue()
+                vie = self.val_ie.getValue()
+                vrr = self.val_rr.getValue()
+                opmode = self.operation_mode
+
+                m = (False, opmode, vtv, vie, vrr, vdo2, vpeep, vpp)
+                self.controller_settings_pub.send_pyobj(m)
             else:
-                s = (self.val_tv.getValue(),
-                     self.val_rr.getValue(), self.val_ie.getValue(), True)
-                self.control_setpoints_pub.send_pyobj(s)
+                vdo2 = self.val_do2.getValue()
+                vpeep = self.val_peep.getValue()
+                vpp = self.val_pp.getValue()
+                vtv = self.val_tv.getValue()
+                vie = self.val_ie.getValue()
+                vrr = self.val_rr.getValue()
+                opmode = self.operation_mode
+
+                m = (True, opmode, vtv, vie, vrr, vdo2, vpeep, vpp)
+                self.controller_settings_pub.send_pyobj(m)
 
     def _updateStartStopButton(self):
         if not self.stoppedBool:
@@ -267,21 +289,21 @@ class OSV(QtWidgets.QMainWindow):
                 "background-color: rgb(0, 255, 0);\n")
 
     def _applyClicked(self):
-        # Send out the values over the IPC
         with self.zmq_poll_lock:
-            s = (self.val_do2.getValue(),
-                 self.val_peep.getValue(), self.val_pp.getValue())
-        self.alarm_setpoints_pub.send_pyobj(s)
+            vdo2 = self.val_do2.getValue()
+            vpeep = self.val_peep.getValue()
+            vpp = self.val_pp.getValue()
+            vtv = self.val_tv.getValue()
+            vie = self.val_ie.getValue()
+            vrr = self.val_rr.getValue()
+            stopped = self.stoppedBool
+            opmode = self.operation_mode
 
-        with self.zmq_poll_lock:
-            s = (self.val_tv.getValue(), self.val_ie.getValue(),
-                 self.val_rr.getValue(), self.stoppedBool)
-        self.control_setpoints_pub.send_pyobj(s)
+            m = (stopped, opmode, vtv, vie, vrr, vdo2, vpeep, vpp)
+            self.controller_settings_pub.send_pyobj(m)
 
     def _muteAlarmClicked(self):
-        with self.zmq_poll_lock:
-            s = (True)
-        self.mute_alarms_pub.send_pyobj(s)
+        self.mute_alarms_pub.send_pyobj(True)
 
     def _quitClicked(self):
         self.app.quit()
