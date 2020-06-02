@@ -67,7 +67,7 @@ class OSV(QtWidgets.QMainWindow):
         self.update_groupbox_timer = QTimer(self)
         self.update_groupbox_timer.timeout.connect(self._updateControlGroupBoxValues)
         self.update_groupbox_timer.start(self.UPDATE_GROUPBOX_PERIOD)
-        
+
         self.zmq_poll_lock = Lock()
 
         self.stoppedBool = True
@@ -253,7 +253,10 @@ class OSV(QtWidgets.QMainWindow):
 
     def _updateControlGroupBoxValues(self):
         for a in list(zip(self.vals, self.val_labels)):
-            r = round(a[0].getRedValue(), 2)
+            try:
+                r = round(a[0].getRedValue(), 2)
+            except TypeError:
+                r = None
             v = a[0].getValue()
             u = a[0].getUnit()
             a[1].setText(f'{r}/{v} {u}')
