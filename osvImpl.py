@@ -72,7 +72,7 @@ class OSV(QtWidgets.QMainWindow):
 
         self.stoppedBool = True
 
-        self.operation_mode = OperationMode.VOLUME_CONTROL
+        self.operation_mode = OperationMode.VOLUME_CONTROL.name
 
         self.statusText = "GUI Initializing"
         self.statusColor = (255, 255, 255)
@@ -142,7 +142,8 @@ class OSV(QtWidgets.QMainWindow):
             ['Volume Control', 'Pressure Control', 'Assisted Breathing'])
         '''
         self.ui.comboBoxModeSelect.addItems(
-            ['Volume Control', 'Pressure Control'])
+            [OperationMode.VOLUME_CONTROL.name, OperationMode.PRESSURE_CONTROL.name])
+        self.ui.comboBoxModeSelect.currentIndexChanged.connect(self._opmodeComboBoxIndexChanged)
 
 
     def _setupGraph(self):
@@ -244,6 +245,10 @@ class OSV(QtWidgets.QMainWindow):
 
         if len(socks) > 0:
             self.update()
+
+
+    def _opmodeComboBoxIndexChanged(self, i):
+        self.operation_mode = self.ui.comboBoxModeSelect.currentText()
 
     def _updateStatus(self):
         self.ui.labelStatus.setText(self.statusText)
