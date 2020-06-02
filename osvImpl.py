@@ -84,7 +84,7 @@ class OSV(QtWidgets.QMainWindow):
         self.val_tv = ConstrainedIncrementedSetAndRedDimensionalValue(val=500, step=100, maximum=1000, minimum=200,
                                                                       unit='ml')
         self.val_ie = ConstrainedIncrementedSetAndRedDimensionalValue(
-            val=0.5, step=0.05, maximum=1.0, minimum=0.1)
+            val=1, step=1, maximum=4, minimum=1)
         self.val_rr = ConstrainedIncrementedSetAndRedDimensionalValue(val=15, step=1, maximum=20, minimum=10,
                                                                       unit='bpm')
         self.val_do2 = ConstrainedIncrementedSetAndRedDimensionalValue(
