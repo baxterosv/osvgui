@@ -275,7 +275,7 @@ class OSV(QtWidgets.QMainWindow):
                 vtv = self.val_tv.getValue()
                 vie = self.val_ie.getValue()
                 vrr = self.val_rr.getValue()
-                opmode = self.operation_mode.name
+                opmode = self.operation_mode
 
                 m = (False, opmode, vtv, vie, vrr, vdo2, vpeep, vpp)
                 self.controller_settings_pub.send_pyobj(m)
@@ -286,7 +286,7 @@ class OSV(QtWidgets.QMainWindow):
                 vtv = self.val_tv.getValue()
                 vie = self.val_ie.getValue()
                 vrr = self.val_rr.getValue()
-                opmode = self.operation_mode.name
+                opmode = self.operation_mode
 
                 m = (True, opmode, vtv, vie, vrr, vdo2, vpeep, vpp)
                 self.controller_settings_pub.send_pyobj(m)
@@ -310,7 +310,7 @@ class OSV(QtWidgets.QMainWindow):
             vie = self.val_ie.getValue()
             vrr = self.val_rr.getValue()
             stopped = self.stoppedBool
-            opmode = self.operation_mode.name
+            opmode = self.operation_mode
 
             m = (stopped, opmode, vtv, vie, vrr, vdo2, vpeep, vpp)
             self.controller_settings_pub.send_pyobj(m)
