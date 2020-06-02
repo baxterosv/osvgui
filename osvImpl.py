@@ -189,7 +189,7 @@ class OSV(QtWidgets.QMainWindow):
         self.subscribers_poller = zmq.Poller()
         self.subscribers_poller.register(self.measured_values_sub, zmq.POLLIN)
         self.subscribers_poller.register(
-            self.current_set_controls_sub, zmq.POLLIN)
+            self.controller_settings_echo_sub, zmq.POLLIN)
         self.subscribers_poller.register(self.osv_status_sub, zmq.POLLIN)
         self.subscribers_poller.register(self.triggered_alarms_sub, zmq.POLLIN)
 
