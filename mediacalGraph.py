@@ -29,7 +29,7 @@ class MedicalGraph(FigureCanvas):
         ax2.set_xlim(0, domain)
 
         ax1.set_ylim(-10, 60)
-        ax2.set_ylim(-0.1, 1.0)
+        ax2.set_ylim(-10, 70)
 
         self.vl1 = ax1.axvline(x=0, color='k', linestyle='--')
         self.vl2 = ax2.axvline(x=0, color='k', linestyle='--')
