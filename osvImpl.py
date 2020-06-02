@@ -99,7 +99,7 @@ class OSV(QtWidgets.QMainWindow):
             r = None
             v = a[0].getValue()
             u = a[0].getUnit()
-            a[1].setText(f'{r}/{v} {u}')
+            a[0].setText(f'{r}/{v} {u}')
 
         self.ui.pushButton_DO2_Up.clicked.connect(
             lambda: self._incrementValue(self.val_do2, self.ui.label_DO2))
@@ -248,10 +248,10 @@ class OSV(QtWidgets.QMainWindow):
 
     def _updateControlGroupBoxValues(self):
         for a in list(zip(self.vals, self.val_labels)):
-            r = None
+            r = a[0].getRedValue()
             v = a[0].getValue()
             u = a[0].getUnit()
-            a[1].setText(f'{r}/{v} {u}')
+            a[0].setText(f'{r}/{v} {u}')
 
     def _startStopClicked(self):
         with self.zmq_poll_lock:
