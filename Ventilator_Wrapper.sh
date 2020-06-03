@@ -1,4 +1,4 @@
 #!/bin/bash
 
-python3 /home/pi/20200404/osvgui/BaxterOSV_Resize.py &
-python3 /home/pi/20200404/osvcontroller/vol-control.py
+python3 /home/pi/Code/osv/osvgui/osvMain.py &
+python3 /home/pi/Code/osv/osvcontroller/vol-control.py

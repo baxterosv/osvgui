@@ -81,17 +81,17 @@ class OSV(QtWidgets.QMainWindow):
         self.alarmState = False
         self.ui.pushButtonMuteAlarm.setEnabled(False)
 
-        self.val_tv = ConstrainedIncrementedSetAndRedDimensionalValue(val=500, step=100, maximum=1000, minimum=200,
+        self.val_tv = ConstrainedIncrementedSetAndRedDimensionalValue(val=400, step=50, maximum=700, minimum=200,
                                                                       unit='ml')
         self.val_ie = ConstrainedIncrementedSetAndRedDimensionalValue(
             val=1, step=1, maximum=4, minimum=1)
-        self.val_rr = ConstrainedIncrementedSetAndRedDimensionalValue(val=15, step=1, maximum=20, minimum=10,
+        self.val_rr = ConstrainedIncrementedSetAndRedDimensionalValue(val=15, step=1, maximum=30, minimum=10,
                                                                       unit='bpm')
-        self.val_do2 = ConstrainedIncrementedSetAndRedDimensionalValue(
+        self.val_do2 = ConstrainedIncrementedSetAndRedDimensionalValue(val=20, step=10, maximum=100, minimum=20,
             unit='%')
-        self.val_peep = ConstrainedIncrementedSetAndRedDimensionalValue(
+        self.val_peep = ConstrainedIncrementedSetAndRedDimensionalValue(val=10, step=1, maximum=15, minimum=5,
             unit='cm-H2O')
-        self.val_pp = ConstrainedIncrementedSetAndRedDimensionalValue(
+        self.val_pp = ConstrainedIncrementedSetAndRedDimensionalValue(val=30, step=5, maximum=60, minimum=5,
             unit='cm-H2O')
 
         self.vals = [self.val_do2, self.val_ie, self.val_pp,
