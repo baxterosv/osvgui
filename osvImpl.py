@@ -11,6 +11,7 @@ import zmq
 import logging
 logging.basicConfig(level=logging.INFO)
 
+
 class OperationMode(Enum):
     VOLUME_CONTROL = 0
     PRESSURE_CONTROL = 1
@@ -50,7 +51,7 @@ class OSV(QtWidgets.QMainWindow):
     def __init__(self, ui: Ui_MainWindow, app: QtWidgets.QApplication):
 
         self.ZMQ_POLLING_PERIOD = 10  # ms
-        self.UPDATE_GROUPBOX_PERIOD = 1000 # ms
+        self.UPDATE_GROUPBOX_PERIOD = 1000  # ms
 
         super().__init__()
         self.app = app
@@ -65,7 +66,8 @@ class OSV(QtWidgets.QMainWindow):
         self.poll_timer.start(self.ZMQ_POLLING_PERIOD)
 
         self.update_groupbox_timer = QTimer(self)
-        self.update_groupbox_timer.timeout.connect(self._updateControlGroupBoxValues)
+        self.update_groupbox_timer.timeout.connect(
+            self._updateControlGroupBoxValues)
         self.update_groupbox_timer.start(self.UPDATE_GROUPBOX_PERIOD)
 
         self.zmq_poll_lock = Lock()
@@ -97,40 +99,44 @@ class OSV(QtWidgets.QMainWindow):
         self.vals = [self.val_do2, self.val_ie, self.val_pp,
                      self.val_rr, self.val_tv, self.val_peep]
 
-        self.val_labels = [self.ui.label_DO2, self.ui.label_IE, self.ui.label_PP,
-                           self.ui.label_RR, self.ui.label_TV, self.ui.label_PEEP]
+        self.current_labels = [self.ui.label_Current_DO2, self.ui.label_Current_IE, self.ui.label_Current_PP,
+                               self.ui.label_Current_RR, self.ui.label_Current_TV, self.ui.label_Current_PEEP]
 
-        for a in list(zip(self.vals, self.val_labels)):
+        self.new_labels = [self.ui.label_New_DO2, self.ui.label_New_IE, self.ui.label_New_PP,
+                           self.ui.label_New_RR, self.ui.label_New_TV, self.ui.label_New_PEEP]
+
+        for a in list(zip(self.vals, self.current_labels, self.new_labels)):
             r = None
             v = a[0].getValue()
             u = a[0].getUnit()
-            a[1].setText(f'{r}/{v} {u}')
+            a[1].setText(f'{r} {u}')
+            a[2].setText(f'{v} {u}')
 
         self.ui.pushButton_DO2_Up.clicked.connect(
-            lambda: self._incrementValue(self.val_do2, self.ui.label_DO2))
+            lambda: self._incrementValue(self.val_do2, self.ui.label_Current_DO2, self.ui.label_New_DO2))
         self.ui.pushButton_IE_Up.clicked.connect(
-            lambda: self._incrementValue(self.val_ie, self.ui.label_IE))
+            lambda: self._incrementValue(self.val_ie, self.ui.label_Current_IE, self.ui.label_New_IE))
         self.ui.pushButton_PP_Up.clicked.connect(
-            lambda: self._incrementValue(self.val_pp, self.ui.label_PP))
+            lambda: self._incrementValue(self.val_pp, self.ui.label_Current_PP, self.ui.label_New_PP))
         self.ui.pushButton_RR_Up.clicked.connect(
-            lambda: self._incrementValue(self.val_rr, self.ui.label_RR))
+            lambda: self._incrementValue(self.val_rr, self.ui.label_Current_RR, self.ui.label_New_RR))
         self.ui.pushButton_TV_Up.clicked.connect(
-            lambda: self._incrementValue(self.val_tv, self.ui.label_TV))
+            lambda: self._incrementValue(self.val_tv, self.ui.label_Current_TV, self.ui.label_New_TV))
         self.ui.pushButton_PEEP_Up.clicked.connect(
-            lambda: self._incrementValue(self.val_peep, self.ui.label_PEEP))
+            lambda: self._incrementValue(self.val_peep, self.ui.label_Current_PEEP, self.ui.label_New_PEEP))
 
         self.ui.pushButton_DO2_Down.clicked.connect(
-            lambda: self._decrementValue(self.val_do2, self.ui.label_DO2))
+            lambda: self._decrementValue(self.val_do2, self.ui.label_Current_DO2, self.ui.label_New_DO2))
         self.ui.pushButton_IE_Down.clicked.connect(
-            lambda: self._decrementValue(self.val_ie, self.ui.label_IE))
+            lambda: self._decrementValue(self.val_ie, self.ui.label_Current_IE, self.ui.label_New_IE))
         self.ui.pushButton_PP_Down.clicked.connect(
-            lambda: self._decrementValue(self.val_pp, self.ui.label_PP))
+            lambda: self._decrementValue(self.val_pp, self.ui.label_Current_PP, self.ui.label_New_PP))
         self.ui.pushButton_RR_Down.clicked.connect(
-            lambda: self._decrementValue(self.val_rr, self.ui.label_RR))
+            lambda: self._decrementValue(self.val_rr, self.ui.label_Current_RR, self.ui.label_New_RR))
         self.ui.pushButton_TV_Down.clicked.connect(
-            lambda: self._decrementValue(self.val_tv, self.ui.label_TV))
+            lambda: self._decrementValue(self.val_tv, self.ui.label_Current_TV, self.ui.label_New_TV))
         self.ui.pushButton_PEEP_Down.clicked.connect(
-            lambda: self._decrementValue(self.val_peep, self.ui.label_PEEP))
+            lambda: self._decrementValue(self.val_peep, self.ui.label_Current_PEEP, self.ui.label_New_PEEP))
 
         self.ui.pushButtonApply.clicked.connect(self._applyClicked)
         self.ui.pushButtonStart.clicked.connect(self._startStopClicked)
@@ -143,8 +149,8 @@ class OSV(QtWidgets.QMainWindow):
         '''
         self.ui.comboBoxModeSelect.addItems(
             [OperationMode.VOLUME_CONTROL.name, OperationMode.PRESSURE_CONTROL.name])
-        self.ui.comboBoxModeSelect.currentIndexChanged.connect(self._opmodeComboBoxIndexChanged)
-
+        self.ui.comboBoxModeSelect.currentIndexChanged.connect(
+            self._opmodeComboBoxIndexChanged)
 
     def _setupGraph(self):
         self.mg = MedicalGraph(self.graph_data_sub, self.graph_data_poller)
@@ -246,7 +252,6 @@ class OSV(QtWidgets.QMainWindow):
         if len(socks) > 0:
             self.update()
 
-
     def _opmodeComboBoxIndexChanged(self, i):
         self.operation_mode = self.ui.comboBoxModeSelect.currentText()
 
@@ -257,14 +262,15 @@ class OSV(QtWidgets.QMainWindow):
         self.ui.labelStatus.setStyleSheet(colorStr)
 
     def _updateControlGroupBoxValues(self):
-        for a in list(zip(self.vals, self.val_labels)):
+        for a in list(zip(self.vals, self.current_labels, self.new_labels)):
             try:
                 r = round(a[0].getRedValue(), 2)
             except TypeError:
                 r = None
             v = a[0].getValue()
             u = a[0].getUnit()
-            a[1].setText(f'{r}/{v} {u}')
+            a[1].setText(f'{r} {u}')
+            a[2].setText(f'{v} {u}')
 
     def _startStopClicked(self):
         with self.zmq_poll_lock:
@@ -321,7 +327,7 @@ class OSV(QtWidgets.QMainWindow):
     def _quitClicked(self):
         self.app.quit()
 
-    def _incrementValue(self, val: ConstrainedIncrementedSetAndRedDimensionalValue, label: QtWidgets.QLabel):
+    def _incrementValue(self, val: ConstrainedIncrementedSetAndRedDimensionalValue, label_current: QtWidgets.QLabel, label_new: QtWidgets.QLabel):
         with self.zmq_poll_lock:
             # 1) increment internal value
             val.incremenet()
@@ -329,9 +335,10 @@ class OSV(QtWidgets.QMainWindow):
             r = val.getRedValue()
             v = val.getValue()
             u = val.getUnit()
-            label.setText(f'{r}/{v} {u}')
+            label_current.setText(f'{r} {u}')
+            label_new.setText(f'{v} {u}')
 
-    def _decrementValue(self, val: ConstrainedIncrementedSetAndRedDimensionalValue, label: QtWidgets.QLabel):
+    def _decrementValue(self, val: ConstrainedIncrementedSetAndRedDimensionalValue, label_current: QtWidgets.QLabel, label_new: QtWidgets.QLabel):
         with self.zmq_poll_lock:
             # 1) decrement internal value
             val.decrement()
@@ -339,4 +346,5 @@ class OSV(QtWidgets.QMainWindow):
             r = val.getRedValue()
             v = val.getValue()
             u = val.getUnit()
-            label.setText(f'{r}/{v} {u}')
+            label_current.setText(f'{r} {u}')
+            label_new.setText(f'{v} {u}')
