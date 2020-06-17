@@ -13,10 +13,8 @@ logging.basicConfig(level=logging.INFO)
 
 
 class OperationMode(Enum):
-    VOLUME_CONTROL = 0
-    PRESSURE_CONTROL = 1
+    MANDATORY_CONTROL = 0
     PRESSURE_SUPPORTED_CONTROL = 2
-
 
 class ConstrainedIncrementedSetAndRedDimensionalValue():
     def __init__(self, val=0.0, minimum=-1.0, maximum=1.0, step=0.1, unit=''):
@@ -74,7 +72,7 @@ class OSV(QtWidgets.QMainWindow):
 
         self.stoppedBool = True
 
-        self.operation_mode = OperationMode.VOLUME_CONTROL.name
+        self.operation_mode = OperationMode.MANDATORY_CONTROL.name
 
         self.statusText = "GUI Initializing"
         self.statusColor = (255, 255, 255)
@@ -147,7 +145,8 @@ class OSV(QtWidgets.QMainWindow):
             ['Volume Control', 'Pressure Control', 'Assisted Breathing'])
         '''
         self.ui.comboBoxModeSelect.addItems(
-            [OperationMode.VOLUME_CONTROL.name, OperationMode.PRESSURE_CONTROL.name])
+            [OperationMode.MANDATORY_CONTROL.name, OperationMode.PRESSURE_SUPPORTED_CONTROL.name])
+        
         self.ui.comboBoxModeSelect.currentIndexChanged.connect(
             self._opmodeComboBoxIndexChanged)
 
