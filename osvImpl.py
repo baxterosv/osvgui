@@ -148,7 +148,8 @@ class OSV(QtWidgets.QMainWindow):
             ['Volume Control', 'Pressure Control', 'Assisted Breathing'])
         '''
         self.ui.comboBoxModeSelect.addItems(
-            [OperationMode.VOLUME_CONTROL.name, OperationMode.PRESSURE_CONTROL.name])
+            [OperationMode.VOLUME_CONTROL.name, OperationMode.PRESSURE_CONTROL.name, OperationMode.PRESSURE_SUPPORTED_CONTROL.name])
+        
         self.ui.comboBoxModeSelect.currentIndexChanged.connect(
             self._opmodeComboBoxIndexChanged)
 
