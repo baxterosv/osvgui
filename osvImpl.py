@@ -16,6 +16,7 @@ class OperationMode(Enum):
     MANDATORY_CONTROL = 0
     PRESSURE_SUPPORTED_CONTROL = 2
 
+
 class ConstrainedIncrementedSetAndRedDimensionalValue():
     def __init__(self, val=0.0, minimum=-1.0, maximum=1.0, step=0.1, unit=''):
         self.val = val
@@ -83,24 +84,29 @@ class OSV(QtWidgets.QMainWindow):
 
         self.val_tv = ConstrainedIncrementedSetAndRedDimensionalValue(val=400, step=50, maximum=700, minimum=200,
                                                                       unit='ml')
-        self.val_ie = ConstrainedIncrementedSetAndRedDimensionalValue(val=1, step=.5, maximum=4, minimum=1)
+        self.val_ie = ConstrainedIncrementedSetAndRedDimensionalValue(
+            val=1, step=.5, maximum=4, minimum=1)
         self.val_rr = ConstrainedIncrementedSetAndRedDimensionalValue(val=15, step=1, maximum=30, minimum=10,
                                                                       unit='bpm')
         self.val_do2 = ConstrainedIncrementedSetAndRedDimensionalValue(val=20, step=10, maximum=100, minimum=20,
-            unit='%')
+                                                                       unit='%')
         self.val_peep = ConstrainedIncrementedSetAndRedDimensionalValue(val=10, step=1, maximum=15, minimum=5,
-            unit='cm-H2O')
+                                                                        unit='cm-H2O')
         self.val_pp = ConstrainedIncrementedSetAndRedDimensionalValue(val=30, step=2, maximum=60, minimum=5,
-            unit='cm-H2O')
+                                                                      unit='cm-H2O')
+        self.val_mit = ConstrainedIncrementedSetAndRedDimensionalValue(
+            val=30, minimum=5, maximum=45, step=1, unit='s')
+        self.val_btp = ConstrainedIncrementedSetAndRedDimensionalValue(
+            val=10, step=1, maximum=15, minimum=5, unit='cm-H2O')
 
         self.vals = [self.val_do2, self.val_ie, self.val_pp,
-                     self.val_rr, self.val_tv, self.val_peep]
+                     self.val_rr, self.val_tv, self.val_peep, self.val_mit, self.val_btp]
 
         self.current_labels = [self.ui.label_Current_DO2, self.ui.label_Current_IE, self.ui.label_Current_PP,
-                               self.ui.label_Current_RR, self.ui.label_Current_TV, self.ui.label_Current_PEEP]
+                               self.ui.label_Current_RR, self.ui.label_Current_TV, self.ui.label_Current_PEEP, self.ui.label_curren_MIT, self.ui.label_current_BTP]
 
         self.new_labels = [self.ui.label_New_DO2, self.ui.label_New_IE, self.ui.label_New_PP,
-                           self.ui.label_New_RR, self.ui.label_New_TV, self.ui.label_New_PEEP]
+                           self.ui.label_New_RR, self.ui.label_New_TV, self.ui.label_New_PEEP, self.ui.label_new_MIT, self.ui.label_new_BTP]
 
         for a in list(zip(self.vals, self.current_labels, self.new_labels)):
             r = None
@@ -121,6 +127,10 @@ class OSV(QtWidgets.QMainWindow):
             lambda: self._incrementValue(self.val_tv, self.ui.label_Current_TV, self.ui.label_New_TV))
         self.ui.pushButton_PEEP_Up.clicked.connect(
             lambda: self._incrementValue(self.val_peep, self.ui.label_Current_PEEP, self.ui.label_New_PEEP))
+        self.ui.pushButton_MIT_up.clicked.connect(
+            lambda: self._incrementValue(self.val_mit, self.ui.label_curren_MIT, self.ui.label_new_MIT))
+        self.ui.pushButton_BTP_up.clicked.connect(
+            lambda: self._incrementValue(self.val_btp, self.ui.label_current_BTP, self.ui.label_new_BTP))
 
         self.ui.pushButton_DO2_Down.clicked.connect(
             lambda: self._decrementValue(self.val_do2, self.ui.label_Current_DO2, self.ui.label_New_DO2))
@@ -134,21 +144,23 @@ class OSV(QtWidgets.QMainWindow):
             lambda: self._decrementValue(self.val_tv, self.ui.label_Current_TV, self.ui.label_New_TV))
         self.ui.pushButton_PEEP_Down.clicked.connect(
             lambda: self._decrementValue(self.val_peep, self.ui.label_Current_PEEP, self.ui.label_New_PEEP))
+        self.ui.pushButton_MIT_down.clicked.connect(
+            lambda: self._decrementValue(self.val_mit, self.ui.label_curren_MIT, self.ui.label_new_MIT))
+        self.ui.pushButton_BTP_down.clicked.connect(
+            lambda: self._decrementValue(self.val_btp, self.ui.label_current_BTP, self.ui.label_new_BTP))
 
         self.ui.pushButtonApply.clicked.connect(self._applyClicked)
         self.ui.pushButtonStart.clicked.connect(self._startStopClicked)
         self.ui.pushButtonMuteAlarm.clicked.connect(self._muteAlarmClicked)
         self.ui.pushButtonQuit.clicked.connect(self._quitClicked)
 
-        ''' TODO Assisted breathing not yet implemented
-        self.ui.comboBoxModeSelect.addItems(
-            ['Volume Control', 'Pressure Control', 'Assisted Breathing'])
-        '''
         self.ui.comboBoxModeSelect.addItems(
             [OperationMode.MANDATORY_CONTROL.name, OperationMode.PRESSURE_SUPPORTED_CONTROL.name])
-        
+
         self.ui.comboBoxModeSelect.currentIndexChanged.connect(
             self._opmodeComboBoxIndexChanged)
+
+        self.ui.widget_assisted_breathing.setVisible(False)
 
     def _setupGraph(self):
         self.mg = MedicalGraph(self.graph_data_sub, self.graph_data_poller)
@@ -224,10 +236,15 @@ class OSV(QtWidgets.QMainWindow):
         if self.controller_settings_echo_sub in socks:
             r = self.controller_settings_echo_sub.recv_pyobj()
             with self.zmq_poll_lock:
-                stopped, opmode, vtv, vie, vrr, vdo2, vpeep, vpp = r
+                stopped, opmode, vtv, vie, vrr, vdo2, vpeep, vpp, vmit, vbtp = r
                 self.val_tv.setRedValue(vtv)
                 self.val_ie.setRedValue(vie)
                 self.val_rr.setRedValue(vrr)
+                self.val_do2.setRedValue(vdo2)
+                self.val_peep.setRedValue(vpeep)
+                self.val_pp.setRedValue(vpp)
+                self.val_mit.setRedValue(vmit)
+                self.val_btp.setRedValue(vbtp)
                 self.stoppedBool = stopped
             self._updateStartStopButton()
             self._updateControlGroupBoxValues()
@@ -252,6 +269,10 @@ class OSV(QtWidgets.QMainWindow):
 
     def _opmodeComboBoxIndexChanged(self, i):
         self.operation_mode = self.ui.comboBoxModeSelect.currentText()
+        if self.operation_mode == OperationMode.MANDATORY_CONTROL.name:
+            self.ui.widget_assisted_breathing.setVisible(False)
+        elif self.operation_mode == OperationMode.PRESSURE_SUPPORTED_CONTROL.name:
+            self.ui.widget_assisted_breathing.setVisible(True)
 
     def _updateStatus(self):
         self.ui.labelStatus.setText(self.statusText)
@@ -279,9 +300,11 @@ class OSV(QtWidgets.QMainWindow):
                 vtv = self.val_tv.getValue()
                 vie = self.val_ie.getValue()
                 vrr = self.val_rr.getValue()
+                vmit = self.val_mit.getValue()
+                vbtp = self.val_btp.getValue()
                 opmode = self.operation_mode
 
-                m = (False, opmode, vtv, vie, vrr, vdo2, vpeep, vpp)
+                m = (False, opmode, vtv, vie, vrr, vdo2, vpeep, vpp, vmit, vbtp)
                 self.controller_settings_pub.send_pyobj(m)
             else:
                 vdo2 = self.val_do2.getValue()
@@ -290,9 +313,11 @@ class OSV(QtWidgets.QMainWindow):
                 vtv = self.val_tv.getValue()
                 vie = self.val_ie.getValue()
                 vrr = self.val_rr.getValue()
+                vmit = self.val_mit.getValue()
+                vbtp = self.val_btp.getValue()
                 opmode = self.operation_mode
 
-                m = (True, opmode, vtv, vie, vrr, vdo2, vpeep, vpp)
+                m = (True, opmode, vtv, vie, vrr, vdo2, vpeep, vpp, vmit, vbtp)
                 self.controller_settings_pub.send_pyobj(m)
 
     def _updateStartStopButton(self):
@@ -313,10 +338,12 @@ class OSV(QtWidgets.QMainWindow):
             vtv = self.val_tv.getValue()
             vie = self.val_ie.getValue()
             vrr = self.val_rr.getValue()
+            vmit = self.val_mit.getValue()
+            vbtp = self.val_btp.getValue()
             stopped = self.stoppedBool
             opmode = self.operation_mode
 
-            m = (stopped, opmode, vtv, vie, vrr, vdo2, vpeep, vpp)
+            m = (stopped, opmode, vtv, vie, vrr, vdo2, vpeep, vpp, vmit, vbtp)
             self.controller_settings_pub.send_pyobj(m)
 
     def _muteAlarmClicked(self):
